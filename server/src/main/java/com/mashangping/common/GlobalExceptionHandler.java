@@ -1,10 +1,12 @@
 package com.mashangping.common;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @Slf4j
 @RestControllerAdvice
@@ -22,6 +24,18 @@ public class GlobalExceptionHandler {
         FieldError fe = e.getBindingResult().getFieldError();
         String msg = fe == null ? "参数不合法" : fe.getField() + " " + fe.getDefaultMessage();
         return ApiResponse.fail(ErrorCode.PARAM_INVALID, msg);
+    }
+
+    /** 客户端提交了无法解析的请求体（如畸形 JSON）：归为参数错误而非系统故障 */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ApiResponse<Void> handleUnreadable(HttpMessageNotReadableException e) {
+        return ApiResponse.fail(ErrorCode.PARAM_INVALID, "请求体格式错误");
+    }
+
+    /** 请求路径不存在：归为资源不存在而非系统故障 */
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ApiResponse<Void> handleNoResource(NoResourceFoundException e) {
+        return ApiResponse.fail(ErrorCode.NOT_FOUND, "资源不存在");
     }
 
     /** 兜底：记日志，对外只说"系统繁忙" */
