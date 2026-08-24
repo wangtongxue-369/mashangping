@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.FieldError;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -37,6 +38,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(NoResourceFoundException.class)
     public ApiResponse<Void> handleNoResource(NoResourceFoundException e) {
         return ApiResponse.fail(ErrorCode.NOT_FOUND, "资源不存在");
+    }
+
+    /** 请求方法不支持（如对 GET-only 端点发 DELETE）：归为参数错误而非系统故障 */
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ApiResponse<Void> handleMethodNotSupported(HttpRequestMethodNotSupportedException e) {
+        return ApiResponse.fail(ErrorCode.PARAM_INVALID, "请求方法不支持");
     }
 
     /** 方法级鉴权(@PreAuthorize)拒绝：必须重新抛出，交由安全层
