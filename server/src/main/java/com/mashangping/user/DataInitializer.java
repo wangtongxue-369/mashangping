@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
@@ -29,7 +30,12 @@ public class DataInitializer implements ApplicationRunner {
         admin.setRealName("系统管理员");
         admin.setRole(User.ROLE_ADMIN);
         admin.setEnabled(true);
-        userMapper.insert(admin);
-        log.warn("已创建初始管理员 admin/admin123，请立即登录修改密码！");
+        try {
+            userMapper.insert(admin);
+            log.warn("已创建初始管理员 admin/admin123，请立即登录修改密码！");
+        } catch (DuplicateKeyException e) {
+            // 并行上下文/多实例冷启动竞态兜底：admin 已存在则跳过
+            log.info("初始管理员已存在，跳过种子创建");
+        }
     }
 }
