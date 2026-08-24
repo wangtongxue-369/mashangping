@@ -29,7 +29,8 @@ public class SecurityConfig {
         http.csrf(AbstractHttpConfigurer::disable)
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                    .requestMatchers("/api/auth/**").permitAll()   // Task 6 收紧为 /api/auth/login
+                    // 原 .requestMatchers("/api/auth/**").permitAll() 改为：
+                    .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/auth/login").permitAll()
                     .requestMatchers("/api/admin-only-probe").hasRole("ADMIN")
                     .anyRequest().authenticated())
             .exceptionHandling(e -> e
