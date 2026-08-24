@@ -3,6 +3,7 @@ package com.mashangping.ping;
 import com.mashangping.IntegrationTestBase;
 import org.junit.jupiter.api.Test;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -26,7 +27,8 @@ class PingControllerTest extends IntegrationTestBase {
         mockMvc.perform(post("/api/ping/echo")
                                 .contentType("application/json")
                                 .content("{}")
-                                .with(user("tester").roles("TEACHER")))
+                                .with(user("tester").roles("TEACHER"))
+                                .with(csrf()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(40000))
                 .andExpect(jsonPath("$.message").exists());
