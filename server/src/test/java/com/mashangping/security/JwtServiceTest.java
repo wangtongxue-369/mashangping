@@ -12,7 +12,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class JwtServiceTest {
 
-    private static final String SECRET = "unit-test-secret-key-0123456789abcdef"; // 32字节
+    private static final String SECRET = "unit-test-secret-key-0123456789abcdef"; // 37 字节，满足 HS256 ≥32 字节要求
     private final JwtService jwtService = new JwtService(SECRET, Duration.ofHours(24));
 
     @Test

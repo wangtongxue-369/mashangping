@@ -3,6 +3,7 @@ package com.mashangping.security;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -18,6 +19,7 @@ public class JwtService {
     private final Duration expiry;
 
     /** 生产/装配用构造器：从配置读取密钥，有效期固定 24h（规格 §9.2） */
+    @Autowired
     public JwtService(@Value("${msp.jwt.secret}") String secret) {
         this(secret, Duration.ofHours(24));
     }
