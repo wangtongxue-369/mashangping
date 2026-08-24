@@ -2,6 +2,7 @@ package com.mashangping.common;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -36,6 +37,14 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(NoResourceFoundException.class)
     public ApiResponse<Void> handleNoResource(NoResourceFoundException e) {
         return ApiResponse.fail(ErrorCode.NOT_FOUND, "资源不存在");
+    }
+
+    /** 方法级鉴权(@PreAuthorize)拒绝：必须重新抛出，交由安全层
+     *  ExceptionTranslationFilter→RestProblemHandling 输出真实 HTTP 403；
+     *  若被兜底捕获会误标为 code=50000"系统繁忙"。 */
+    @ExceptionHandler(AccessDeniedException.class)
+    public void handleAccessDenied(AccessDeniedException e) throws AccessDeniedException {
+        throw e;
     }
 
     /** 兜底：记日志，对外只说"系统繁忙" */
