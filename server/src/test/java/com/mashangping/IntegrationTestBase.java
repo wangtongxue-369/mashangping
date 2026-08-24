@@ -52,4 +52,11 @@ public abstract class IntegrationTestBase {
 
     @Autowired
     protected MockMvc mockMvc;
+
+    /** 用指定用户信息生成真实可用的 Bearer 请求头值 */
+    protected String bearer(com.mashangping.security.JwtService jwtService,
+                            long uid, String username, String role) {
+        return "Bearer " + jwtService.generate(
+                new com.mashangping.security.TokenPayload(uid, username, role));
+    }
 }
