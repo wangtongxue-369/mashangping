@@ -15,7 +15,8 @@ msp:
     # 仅用于本地开发；生产环境必须更换为随机生成的 ≥32 字节密钥
     secret: dev-only-secret-change-me-0123456789abcdef
   school:
-    # 学校邮箱后缀白名单（多域换行列举）；生产部署时改为真实学校域名
+    # 学校邮箱后缀白名单（多域用英文逗号分隔的标量，如 stu.example.edu.cn,staff.example.edu.cn；
+    # 切勿写成换行列举——那会生成 email-suffixes[0] 索引键，导致 @Value 绑定失败启动崩溃）
     email-suffixes: stu.example.edu.cn
   mail:
     # false=开发模式仅打日志；true 时下方 SMTP 配置生效（国内云服务器用 465 SSL）
