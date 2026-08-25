@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.mashangping.common.BizException;
 import com.mashangping.common.ErrorCode;
+import com.mashangping.security.UserAuthCache;
 import com.mashangping.user.dto.UserCreateRequest;
 import com.mashangping.user.dto.UserView;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +25,7 @@ public class UserService {
 
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
+    private final UserAuthCache userAuthCache;
 
     public User createUser(UserCreateRequest request) {
         if (!VALID_ROLES.contains(request.role())) {
@@ -63,12 +65,14 @@ public class UserService {
         User user = requireUser(id);
         user.setEnabled(enabled);
         userMapper.updateById(user);
+        userAuthCache.invalidate(id);
     }
 
     public void resetPassword(long id, String newPassword) {
         User user = requireUser(id);
         user.setPasswordHash(passwordEncoder.encode(newPassword));
         userMapper.updateById(user);
+        userAuthCache.invalidate(id);
     }
 
     private User requireUser(long id) {

@@ -2,6 +2,8 @@ package com.mashangping.common;
 
 import com.mashangping.ping.PingController;
 import com.mashangping.security.JwtService;
+import com.mashangping.security.UserAuthCache;
+import com.mashangping.user.UserMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -24,9 +26,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 class ExceptionMappingWebMvcTest {
 
-    /** 切片会扫描到 Filter 类型的 JwtAuthFilter（其依赖 JwtService），用 Mock 补齐即可 */
+    /** 切片会扫描到 Filter 类型的 JwtAuthFilter（其依赖 JwtService/UserAuthCache/UserMapper），用 Mock 补齐即可 */
     @MockBean
     private JwtService jwtService;
+    @MockBean
+    private UserAuthCache userAuthCache;
+    @MockBean
+    private UserMapper userMapper;
 
     @Autowired
     private MockMvc mockMvc;

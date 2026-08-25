@@ -1,7 +1,9 @@
 package com.mashangping.user;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.mashangping.IntegrationTestBase;
 import com.mashangping.security.JwtService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -19,8 +21,32 @@ class UserControllerTest extends IntegrationTestBase {
     @Autowired
     private UserMapper userMapper;
 
+    /** 实时吊销改造后 token 必须对应库内真实用户：先落库本类的管理端身份 */
+    @BeforeEach
+    void seedAdmin() {
+        ensureUser("p2_admin_admin", "ADMIN");
+    }
+
+    /** 找不到同名用户则落库（角色、启用），返回真实 uid */
+    private long ensureUser(String username, String role) {
+        User probe = userMapper.selectOne(new LambdaQueryWrapper<User>()
+                .eq(User::getUsername, username));
+        if (probe != null) {
+            return probe.getId();
+        }
+        User u = new User();
+        u.setUsername(username);
+        u.setPasswordHash(passwordEncoder.encode("secret66"));
+        u.setRealName("测试" + role);
+        u.setRole(role);
+        u.setEnabled(true);
+        userMapper.insert(u);
+        return u.getId();
+    }
+
     private String bearerAs(String role, String username) {
-        return bearer(jwtService, 999L, username, role);
+        // 用库内真实用户的 uid 签发，过滤器查库快照才能通过
+        return bearer(jwtService, ensureUser(username, role), username, role);
     }
 
     @Test
