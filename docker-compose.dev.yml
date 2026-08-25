@@ -1,9 +1,11 @@
+name: msp-dev   # 中文目录名无法自动派生项目名，必须显式指定
+
 services:
   mysql:
     image: mysql:8.0
     container_name: msp-dev-mysql
     ports:
-      - "3306:3306"
+      - "3307:3306"   # 宿主机3306已被本地MySQL服务占用，改用3307
     environment:
       MYSQL_DATABASE: msp
       MYSQL_USER: msp

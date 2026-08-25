@@ -1,6 +1,6 @@
 spring:
   datasource:
-    url: jdbc:mysql://localhost:3306/msp?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+    url: jdbc:mysql://localhost:3307/msp?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
     username: msp
     password: msp123456
   flyway:
