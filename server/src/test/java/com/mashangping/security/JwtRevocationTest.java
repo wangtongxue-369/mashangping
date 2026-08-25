@@ -34,6 +34,12 @@ class JwtRevocationTest extends IntegrationTestBase {
             u.setEnabled(true);
             userMapper.insert(u);
             probe = u;
+        } else {
+            // 测试基座无事务回滚：复用探测账号时必须恢复启用态，
+            // 否则"停用"用例会污染后续用例，形成对方法排序的隐性依赖
+            probe.setEnabled(true);
+            userMapper.updateById(probe);
+            userAuthCache.invalidate(probe.getId());
         }
         victimUid = probe.getId();
         victimToken = jwtService.generate(
