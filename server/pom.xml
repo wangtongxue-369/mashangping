@@ -18,6 +18,8 @@
         <java.version>17</java.version>
         <mybatis-plus.version>3.5.7</mybatis-plus.version>
         <jjwt.version>0.12.6</jjwt.version>
+        <!-- 覆盖Boot管理的1.19.8：Docker Engine v29要求API≥1.44，旧版协商旧API会被Desktop代理以400拒绝 -->
+        <testcontainers.version>1.21.4</testcontainers.version>
     </properties>
 
     <dependencies>
