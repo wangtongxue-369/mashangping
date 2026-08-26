@@ -2,6 +2,8 @@ package com.mashangping.problem;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.mashangping.IntegrationTestBase;
+import com.mashangping.course.Course;
+import com.mashangping.course.CourseMapper;
 import com.mashangping.security.JwtService;
 import com.mashangping.user.User;
 import com.mashangping.user.UserMapper;
@@ -19,6 +21,7 @@ class ProblemCrudTest extends IntegrationTestBase {
     @Autowired private JwtService jwtService;
     @Autowired private UserMapper userMapper;
     @Autowired private CourseProblemMapper courseProblemMapper;
+    @Autowired private CourseMapper courseMapper;
 
     private long uidA;
     private long uidB;
@@ -136,9 +139,13 @@ class ProblemCrudTest extends IntegrationTestBase {
                         .contentType(MediaType.APPLICATION_JSON).content(createBody("被引题")));
         long id = ownedProblemIdByTitle(teacherA(), "被引题");
 
-        // 直接落库模拟"已被某课程选用"（选题 API 属 Task 4，此处只验证保护本身）
+        // 直接落库模拟"已被某课程选用"（选题 API 属 Task 4，此处只验证保护本身；
+        // V5 外键 fk_cp_course 拒绝悬空 course_id，故先建真实课程行）
+        Course c = new Course();
+        c.setName("引用课"); c.setTerm("2025-2026-1"); c.setTeacherId(uidA);
+        courseMapper.insert(c);
         CourseProblem ref = new CourseProblem();
-        ref.setCourseId(887001L);
+        ref.setCourseId(c.getId());
         ref.setProblemId(id);
         ref.setSortOrder(1);
         courseProblemMapper.insert(ref);
