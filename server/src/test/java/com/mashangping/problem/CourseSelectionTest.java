@@ -168,6 +168,17 @@ class CourseSelectionTest extends IntegrationTestBase {
     }
 
     @Test
+    void list_on_empty_course_returns_zero_page_without_touching_case_table() throws Exception {
+        // seed() 建了课程但未选任何题：锁定空关联路径行为契约（早退后不再触碰 test_case 表）
+        mockMvc.perform(get("/api/courses/" + courseIdA + "/problems")
+                        .header("Authorization", teacherA()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.total").value(0))
+                .andExpect(jsonPath("$.data.records.length()").value(0));
+    }
+
+    @Test
     void other_teacher_cannot_touch_my_course_selection() throws Exception {
         long pid = createProblem(uidB, "乙的题", false);
         mockMvc.perform(post("/api/courses/" + courseIdA + "/problems")
