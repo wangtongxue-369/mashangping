@@ -8,6 +8,7 @@ import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @Slf4j
@@ -52,6 +53,14 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AccessDeniedException.class)
     public void handleAccessDenied(AccessDeniedException e) throws AccessDeniedException {
         throw e;
+    }
+
+    /** 名单导入文件超过 multipart 上限：归为"导入文件不合法"而非兜底"系统繁忙"；
+     *  异常发生在部件解析阶段，拿不到文件名，日志仅带大小与上限线索且降为 warn */
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ApiResponse<Void> handleMaxUploadSize(MaxUploadSizeExceededException e) {
+        log.warn("导入文件超过 multipart 大小上限：{}", e.getMessage());
+        return ApiResponse.fail(ErrorCode.EXCEL_FORMAT_ERROR);
     }
 
     /** 兜底：记日志，对外只说"系统繁忙" */

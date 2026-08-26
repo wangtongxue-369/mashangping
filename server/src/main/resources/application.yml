@@ -3,6 +3,12 @@ spring:
     url: jdbc:mysql://localhost:3307/msp?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
     username: msp
     password: msp123456
+  servlet:
+    multipart:
+      # 教师名单 Excel 导入的传输层上限：单文件 1MB、整请求 2MB（500 行两列 xlsx 远用不满）；
+      # 超限由 GlobalExceptionHandler 映射为 40014「导入文件不合法」，而非兜底"系统繁忙"
+      max-file-size: 1MB
+      max-request-size: 2MB
   flyway:
     enabled: true
 
