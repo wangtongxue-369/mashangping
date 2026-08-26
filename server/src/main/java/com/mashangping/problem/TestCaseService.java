@@ -21,7 +21,8 @@ public class TestCaseService {
 
     public TestCase create(long uid, long problemId, TestCaseUpsertRequest request) {
         problemService.getOwned(uid, problemId);
-        enforceLimits(problemId, request);
+        enforceCountLimit(problemId);
+        enforceByteLimit(request);
 
         TestCase tc = new TestCase();
         tc.setProblemId(problemId);
@@ -33,7 +34,8 @@ public class TestCaseService {
     public void update(long uid, long problemId, long testCaseId, TestCaseUpsertRequest request) {
         problemService.getOwned(uid, problemId);
         TestCase tc = requireCaseOfProblem(problemId, testCaseId);
-        enforceLimits(problemId, request);
+        // 数量上限不查：更新不增加数量，满员仍可编辑（字节上限两路共用）
+        enforceByteLimit(request);
         applyUpsert(tc, request);
         testCaseMapper.updateById(tc);
     }
@@ -53,12 +55,16 @@ public class TestCaseService {
         return tc;
     }
 
-    private void enforceLimits(long problemId, TestCaseUpsertRequest request) {
+    /** 仅 create 调用：更新不增加数量，不得以数量上限阻塞既有测试点编辑 */
+    private void enforceCountLimit(long problemId) {
         Long count = testCaseMapper.selectCount(
                 new LambdaQueryWrapper<TestCase>().eq(TestCase::getProblemId, problemId));
         if (count != null && count >= MAX_CASES_PER_PROBLEM) {
             throw new BizException(ErrorCode.PARAM_INVALID, "每题最多 " + MAX_CASES_PER_PROBLEM + " 个测试点");
         }
+    }
+
+    private void enforceByteLimit(TestCaseUpsertRequest request) {
         checkFieldBytes("输入", request.input());
         checkFieldBytes("期望输出", request.expectedOutput());
     }

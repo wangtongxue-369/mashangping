@@ -136,6 +136,34 @@ class TestCaseCrudTest extends IntegrationTestBase {
     }
 
     @Test
+    void update_allowed_when_at_case_limit() throws Exception {
+        long pid = createProblem(teacherA(), "满员可改题");
+        for (int i = 0; i < 50; i++) {
+            mockMvc.perform(post("/api/problems/" + pid + "/test-cases")
+                            .header("Authorization", teacherA())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(caseBody("in" + i, "out" + i, false)))
+                    .andExpect(jsonPath("$.code").value(0));
+        }
+        // 满员后第 51 个新增仍被拒（不可增）
+        mockMvc.perform(post("/api/problems/" + pid + "/test-cases")
+                        .header("Authorization", teacherA())
+                        .contentType(MediaType.APPLICATION_JSON).content(caseBody("over", "over", false)))
+                .andExpect(jsonPath("$.code").value(40000));
+
+        // 满员状态下更新第 1 点应放行且落库（可改）
+        String detail = mockMvc.perform(get("/api/problems/" + pid).header("Authorization", teacherA()))
+                .andReturn().getResponse().getContentAsString(java.nio.charset.StandardCharsets.UTF_8);
+        long firstTcId = ((Number) com.jayway.jsonpath.JsonPath.read(detail, "$.data.testCases[0].id")).longValue();
+        mockMvc.perform(put("/api/problems/" + pid + "/test-cases/" + firstTcId)
+                        .header("Authorization", teacherA())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(caseBody("fixed", "fixed-out", false)))
+                .andExpect(jsonPath("$.code").value(0));
+        assertThat(testCaseMapper.selectById(firstTcId).getInput()).isEqualTo("fixed");
+    }
+
+    @Test
     void foreign_teacher_gets_40400_on_case_endpoints() throws Exception {
         long pid = createProblem(teacherA(), "他师题");
         mockMvc.perform(post("/api/problems/" + pid + "/test-cases")
