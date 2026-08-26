@@ -9,11 +9,9 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 
 /** 学号-姓名两列名单导入：部分成功模式，坏行明细随响应返回。 */
 @Service
@@ -38,7 +36,6 @@ public class ExcelImportService {
         int pending = 0;
         int skipped = 0;
         List<RowFailure> failures = new ArrayList<>();
-        Set<String> seenNos = new HashSet<>();
 
         for (int i = 0; i < grid.size(); i++) {
             List<String> row = grid.get(i);
@@ -55,13 +52,6 @@ public class ExcelImportService {
                 case PENDING -> pending++;
                 case SKIPPED_DUPLICATE -> skipped++;
                 case FAILED -> failures.add(new RowFailure(excelRow, outcome.failReason()));
-            }
-            if (outcome.kind() == EnrollmentService.ProcessOutcome.Kind.ACTIVATED
-                    || outcome.kind() == EnrollmentService.ProcessOutcome.Kind.PENDING) {
-                seenNos.add(no.trim()); // 记录成功行，供文件内去重提示
-            } else if (!no.isBlank() && !seenNos.add(no.trim())
-                    && outcome.kind() == EnrollmentService.ProcessOutcome.Kind.SKIPPED_DUPLICATE) {
-                // 已是本班成员或文件内重复——SKIPPED 语义已覆盖，无需额外动作
             }
         }
         return new ImportResult(grid.size(), activated, pending, skipped,
