@@ -91,6 +91,24 @@ class RegisterFlowTest extends IntegrationTestBase {
     }
 
     @Test
+    void registered_user_persists_verified_email() throws Exception {
+        String email = "persist@stu.example.edu.cn";
+        String code = obtainCode(email);
+
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(registerJson(email, code, "20261004", "周八", "pass123")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.token").isNotEmpty());
+
+        User row = userMapper.selectOne(new LambdaQueryWrapper<User>()
+                .eq(User::getStudentNo, "20261004"));
+        assertThat(row).isNotNull();
+        assertThat(row.getEmail()).isEqualTo("persist@stu.example.edu.cn");
+    }
+
+    @Test
     void registering_activates_pending_enrollments_in_all_courses() throws Exception {
         // 两门课都给 20261002 预置 PENDING 名单（教师 uid 仅作占位，归属不在本用例范围）
         Course c1 = new Course();

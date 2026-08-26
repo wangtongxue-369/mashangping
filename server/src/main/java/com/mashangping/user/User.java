@@ -20,6 +20,8 @@ public class User {
     private String passwordHash;
     private String realName;
     private String studentNo;
+    /** 学校邮箱（注册验证通过后落库，账号恢复前提）；教师/管理员可为空 */
+    private String email;
     private String role;
     private Boolean enabled;
     private LocalDateTime createdAt;

@@ -50,6 +50,7 @@ public class RegisterService {
         user.setPasswordHash(passwordEncoder.encode(request.password()));
         user.setRealName(request.realName());
         user.setStudentNo(request.studentNo());
+        user.setEmail(request.email());
         user.setRole(User.ROLE_STUDENT);
         user.setEnabled(true);
         try {
