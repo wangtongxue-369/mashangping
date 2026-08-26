@@ -2,6 +2,7 @@ package com.mashangping.user;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.mashangping.common.ApiResponse;
+import com.mashangping.common.PageUtils;
 import com.mashangping.user.dto.*;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -26,7 +27,8 @@ public class UserController {
             @RequestParam(required = false) String role,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int size) {
-        return ApiResponse.ok(userService.listUsers(role, page, size));
+        return ApiResponse.ok(userService.listUsers(role,
+                PageUtils.page(page), PageUtils.size(size)));
     }
 
     @PutMapping("/{id}/status")

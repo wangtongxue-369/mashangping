@@ -6,6 +6,7 @@ import com.mashangping.common.BizException;
 import com.mashangping.common.ErrorCode;
 import com.mashangping.course.CourseService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 
 import java.util.Comparator;
@@ -38,7 +39,12 @@ public class CourseSelectionService {
         cp.setCourseId(courseId);
         cp.setProblemId(problemId);
         cp.setSortOrder(nextSortOrder(courseId));
-        courseProblemMapper.insert(cp);
+        try {
+            courseProblemMapper.insert(cp);
+        } catch (DuplicateKeyException e) {
+            // 并发兜底：两请求同时选同一题越过 pre-check，唯一约束冲突归一 40402
+            throw new BizException(ErrorCode.COURSE_PROBLEM_DUPLICATE);
+        }
     }
 
     public Page<CourseProblemView> list(long uid, long courseId, int page, int size) {

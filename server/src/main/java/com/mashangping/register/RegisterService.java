@@ -45,6 +45,12 @@ public class RegisterService {
             throw new BizException(ErrorCode.STUDENT_NO_CONFLICT);
         }
 
+        Long emailOccupied = userMapper.selectCount(new LambdaQueryWrapper<User>()
+                .eq(User::getEmail, request.email()));
+        if (emailOccupied != null && emailOccupied > 0) {
+            throw new BizException(ErrorCode.EMAIL_CONFLICT);
+        }
+
         User user = new User();
         user.setUsername(request.studentNo());
         user.setPasswordHash(passwordEncoder.encode(request.password()));
@@ -56,7 +62,12 @@ public class RegisterService {
         try {
             userMapper.insert(user);
         } catch (DuplicateKeyException e) {
-            // 并发窗口兜底：唯一键冲突统一按"学号已被占用"对外表达
+            String msg = e.getMostSpecificCause() != null
+                    ? e.getMostSpecificCause().getMessage() : e.getMessage();
+            if (msg != null && msg.contains("uk_user_email")) {
+                // 并发窗口 email 撞唯一键：归 40017（替代以前一律误归一 40013）
+                throw new BizException(ErrorCode.EMAIL_CONFLICT);
+            }
             throw new BizException(ErrorCode.STUDENT_NO_CONFLICT);
         }
 
