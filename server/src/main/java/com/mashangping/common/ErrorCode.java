@@ -14,6 +14,7 @@ public enum ErrorCode {
     STUDENT_NO_CONFLICT(40013, "该学号已被占用"),
     ENROLLMENT_DUPLICATE(40401, "该学号已在课程中"),
     EXCEL_FORMAT_ERROR(40014, "导入文件不合法"),
+    PROBLEM_IN_USE(40015, "题目已被课程选用，无法删除"),
     SYSTEM_ERROR(50000, "系统繁忙，请稍后再试");
 
     private final int code;
