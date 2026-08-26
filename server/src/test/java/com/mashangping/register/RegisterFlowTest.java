@@ -1,6 +1,7 @@
 package com.mashangping.register;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.mashangping.IntegrationTestBase;
 import com.mashangping.course.Course;
 import com.mashangping.course.CourseMapper;
@@ -12,6 +13,7 @@ import com.mashangping.mail.MailSender;
 import com.mashangping.user.User;
 import com.mashangping.user.UserMapper;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -256,5 +258,91 @@ class RegisterFlowTest extends IntegrationTestBase {
 
         // 唯一约束兜底：恰好一个建号成功，其余全部归一为 40013（无论落在哪个检查点）
         assertThat(successes).isEqualTo(1);
+    }
+
+    @Test
+    @Timeout(60) // GREEN 态模板也防 worker 异常导致 latch 挂死（账本 T4⑤ 教训）
+    void concurrent_same_code_double_redeem_yields_exactly_one_success() throws Exception {
+        String email = "atomic@stu.example.edu.cn";
+        String code = obtainCode(email);
+        int threads = 2;
+        ExecutorService pool = Executors.newFixedThreadPool(threads);
+        CountDownLatch ready = new CountDownLatch(threads);
+        CountDownLatch go = new CountDownLatch(1);
+        List<Future<String>> futures = new java.util.ArrayList<>();
+
+        for (int i = 0; i < threads; i++) {
+            futures.add(pool.submit(() -> {
+                ready.countDown();
+                go.await(); // 同邮箱同有效码同时放行，制造验证码消费的竞争窗口
+                var resp = mockMvc.perform(post("/api/auth/register")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(registerJson(email, code, "20267777", "双兑者", "pass123")))
+                        .andReturn();
+                return resp.getResponse().getContentAsString(
+                        java.nio.charset.StandardCharsets.UTF_8);
+            }));
+        }
+        ready.await();
+        go.countDown();
+        List<String> bodies = new java.util.ArrayList<>();
+        for (Future<String> f : futures) {
+            bodies.add(f.get());
+        }
+        pool.shutdown();
+
+        long success = bodies.stream().filter(b -> b.contains("\"code\":0")).count();
+        long invalid = bodies.stream().filter(b -> b.contains("\"code\":40011")).count();
+        // 验证码原子消费：恰好一个建号成功；另一个必须因码被抢用得到 40011，
+        // 绝不能穿过验证落到学号冲突 40013（后者意味着同一码被消费了两次）
+        assertThat(success).as("响应们：%s", bodies).isEqualTo(1);
+        assertThat(invalid).as("响应们：%s", bodies).isEqualTo(1);
+    }
+
+    @Test
+    void five_failures_lock_email_until_fresh_code_issued() throws Exception {
+        String email = "throttle@stu.example.edu.cn";
+        String code = obtainCode(email);
+
+        // 连续 5 次错码：每次都 40011
+        for (int i = 0; i < 5; i++) {
+            mockMvc.perform(post("/api/auth/register")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(registerJson(email, String.format("%06d", i),
+                                    "2026710" + i, "错手" + i, "pass123")))
+                    .andExpect(jsonPath("$.code").value(40011));
+        }
+
+        // 第 6 次即使携带正确码也拒绝：不给攻击者"锁已解除/码仍有效"的区分信号
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(registerJson(email, code, "2026720", "正确码也被拒", "pass123")))
+                .andExpect(jsonPath("$.code").value(40011));
+
+        // 用户重新申请验证码：回拨旧记录时间绕过 60 秒重发限频，
+        // issue() 成功签发新码的同时应重置失败计数
+        emailVerificationMapper.update(null, new LambdaUpdateWrapper<EmailVerification>()
+                .eq(EmailVerification::getEmail, email)
+                .set(EmailVerification::getCreatedAt, LocalDateTime.now().minusMinutes(5)));
+        mockMvc.perform(post("/api/auth/register/code")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"" + email + "\"}"))
+                .andExpect(jsonPath("$.code").value(0));
+        EmailVerification latest = emailVerificationMapper.selectOne(
+                new LambdaQueryWrapper<EmailVerification>()
+                        .eq(EmailVerification::getEmail, email)
+                        .eq(EmailVerification::getUsed, false)
+                        .orderByDesc(EmailVerification::getId)
+                        .last("LIMIT 1"));
+        assertNotNull(latest);
+
+        // 新码恢复可用：注册成功
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(registerJson(email, latest.getCode(),
+                                "2026721", "节流恢复", "pass123")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.token").isNotEmpty());
     }
 }
