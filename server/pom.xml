@@ -110,13 +110,14 @@
     </dependencies>
 
     <!-- easyexcel-core 4.0.3 直依赖 commons-compress 1.24.0，最近优先覆盖了 POI 5.2.5
-         所需的 1.25.0，导致写入 xlsx 时 NoSuchMethodError(putArchiveEntry)，此处对齐 POI 要求 -->
+         所需版本，导致写入 xlsx 时 NoSuchMethodError(putArchiveEntry)，此处对齐 POI 要求；
+         pin 1.26.2：POI 兼容且含 CVE-2024-25710/CVE-2024-26308 修复 -->
     <dependencyManagement>
         <dependencies>
             <dependency>
                 <groupId>org.apache.commons</groupId>
                 <artifactId>commons-compress</artifactId>
-                <version>1.25.0</version>
+                <version>1.26.2</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
