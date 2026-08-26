@@ -6,9 +6,11 @@ import com.mashangping.course.dto.AddStudentRequest;
 import com.mashangping.security.TokenPayload;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -17,6 +19,7 @@ import java.util.List;
 public class CourseMemberController {
 
     private final EnrollmentService enrollmentService;
+    private final ExcelImportService excelImportService;
 
     @PostMapping("/api/courses/{courseId}/students")
     @PreAuthorize("hasRole('TEACHER')")
@@ -52,5 +55,15 @@ public class CourseMemberController {
     @PreAuthorize("hasRole('STUDENT')")
     public ApiResponse<List<EnrollmentService.MyCourseView>> my(@AuthenticationPrincipal TokenPayload me) {
         return ApiResponse.ok(enrollmentService.myCourses(me.uid()));
+    }
+
+    @PostMapping(value = "/api/courses/{courseId}/students/import",
+                 consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasRole('TEACHER')")
+    public ApiResponse<ExcelImportService.ImportResult> importStudents(
+            @AuthenticationPrincipal TokenPayload me,
+            @PathVariable long courseId,
+            @RequestParam("file") MultipartFile file) {
+        return ApiResponse.ok(excelImportService.importStudents(me.uid(), courseId, file));
     }
 }

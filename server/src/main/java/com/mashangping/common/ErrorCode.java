@@ -13,6 +13,7 @@ public enum ErrorCode {
     EMAIL_CODE_RATE_LIMITED(40012, "验证码发送过于频繁，请稍后再试"),
     STUDENT_NO_CONFLICT(40013, "该学号已被占用"),
     ENROLLMENT_DUPLICATE(40401, "该学号已在课程中"),
+    EXCEL_FORMAT_ERROR(40014, "导入文件不合法"),
     SYSTEM_ERROR(50000, "系统繁忙，请稍后再试");
 
     private final int code;

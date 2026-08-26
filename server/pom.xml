@@ -20,6 +20,7 @@
         <jjwt.version>0.12.6</jjwt.version>
         <!-- 覆盖Boot管理的1.19.8：Docker Engine v29要求API≥1.44，旧版协商旧API会被Desktop代理以400拒绝 -->
         <testcontainers.version>1.21.4</testcontainers.version>
+        <easyexcel.version>4.0.3</easyexcel.version>
     </properties>
 
     <dependencies>
@@ -75,6 +76,11 @@
             <scope>runtime</scope>
         </dependency>
         <dependency>
+            <groupId>com.alibaba</groupId>
+            <artifactId>easyexcel</artifactId>
+            <version>${easyexcel.version}</version>
+        </dependency>
+        <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <optional>true</optional>
@@ -102,6 +108,18 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
+
+    <!-- easyexcel-core 4.0.3 直依赖 commons-compress 1.24.0，最近优先覆盖了 POI 5.2.5
+         所需的 1.25.0，导致写入 xlsx 时 NoSuchMethodError(putArchiveEntry)，此处对齐 POI 要求 -->
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-compress</artifactId>
+                <version>1.25.0</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <build>
         <plugins>
