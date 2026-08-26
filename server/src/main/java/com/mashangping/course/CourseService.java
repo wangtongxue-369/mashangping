@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.mashangping.common.BizException;
 import com.mashangping.common.ErrorCode;
+import com.mashangping.common.LikeUtils;
 import com.mashangping.course.dto.CourseUpsertRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -27,7 +28,8 @@ public class CourseService {
     public Page<CourseView> listMine(long teacherUid, int page, int size, String keyword) {
         LambdaQueryWrapper<Course> wrapper = new LambdaQueryWrapper<Course>()
                 .eq(Course::getTeacherId, teacherUid)
-                .like(keyword != null && !keyword.isBlank(), Course::getName, keyword)
+                .like(keyword != null && !keyword.isBlank(), Course::getName,
+                        LikeUtils.escapeForLike(keyword.trim()))
                 .orderByDesc(Course::getId);
         Page<Course> result = courseMapper.selectPage(new Page<>(page, size), wrapper);
         return (Page<CourseView>) result.convert(CourseView::from);

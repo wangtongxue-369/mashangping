@@ -1,6 +1,7 @@
 package com.mashangping.problem;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.mashangping.common.BizException;
 import com.mashangping.common.ErrorCode;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Service;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -61,14 +63,21 @@ public class CourseSelectionService {
         Map<Long, Problem> problems = ids.isEmpty() ? Map.of()
                 : problemMapper.selectBatchIds(ids).stream()
                         .collect(Collectors.toMap(Problem::getId, Function.identity()));
-        Map<Long, Long> caseCounts = testCaseMapper.selectList(
-                        new LambdaQueryWrapper<TestCase>().in(!ids.isEmpty(), TestCase::getProblemId, ids))
-                .stream()
-                .collect(Collectors.groupingBy(TestCase::getProblemId, Collectors.counting()));
+        List<Map<String, Object>> countRows = testCaseMapper.selectMaps(
+                new QueryWrapper<TestCase>()
+                        .select("problem_id", "COUNT(*) AS cnt")
+                        .in(!ids.isEmpty(), "problem_id", ids)
+                        .groupBy("problem_id"));
+        Map<Long, Long> caseCounts = countRows.stream().collect(Collectors.toMap(
+                row -> ((Number) row.get("problem_id")).longValue(),
+                row -> ((Number) row.get("cnt")).longValue()));
 
         List<CourseProblemView> rows = relations.stream()
                 .map(cp -> {
                     Problem p = problems.get(cp.getProblemId());
+                    if (p == null) {
+                        return null; // 关联行存在但题目已消失（异常数据）：跳过不炸
+                    }
                     return new CourseProblemView(cp.getProblemId(), p.getTitle(),
                             Languages.parse(p.getAllowedLanguages()),
                             p.getTimeLimitMs(), p.getMemoryLimitMb(),
@@ -76,6 +85,7 @@ public class CourseSelectionService {
                             caseCounts.getOrDefault(cp.getProblemId(), 0L),
                             cp.getSortOrder());
                 })
+                .filter(Objects::nonNull)
                 .sorted(Comparator.comparingInt(CourseProblemView::sortOrder))
                 .toList();
 

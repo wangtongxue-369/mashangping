@@ -179,6 +179,31 @@ class CourseSelectionTest extends IntegrationTestBase {
     }
 
     @Test
+    void list_skips_rows_with_missing_problem_record() throws Exception {
+        long pid = createProblem(uidA, "正常题", false);
+        mockMvc.perform(post("/api/courses/" + courseIdA + "/problems")
+                        .header("Authorization", teacherA())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"problemId\":" + pid + "}"))
+                .andExpect(jsonPath("$.code").value(0));
+
+        // 模拟历史脏数据：course_problem 行指向已不存在题目（临时关外键绕开 V5 FK 约束）
+        jdbcTemplate.execute("SET FOREIGN_KEY_CHECKS=0");
+        CourseProblem dirty = new CourseProblem();
+        dirty.setCourseId(courseIdA);
+        dirty.setProblemId(987654321L);
+        dirty.setSortOrder(99);
+        courseProblemMapper.insert(dirty);
+        jdbcTemplate.execute("SET FOREIGN_KEY_CHECKS=1");
+
+        mockMvc.perform(get("/api/courses/" + courseIdA + "/problems")
+                        .header("Authorization", teacherA()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                // 脏行被静默跳过：排序最大的正常行 sortOrder 仍可见
+                .andExpect(jsonPath("$.data.total").value(1));
+    }
+
+    @Test
     void other_teacher_cannot_touch_my_course_selection() throws Exception {
         long pid = createProblem(uidB, "乙的题", false);
         mockMvc.perform(post("/api/courses/" + courseIdA + "/problems")
@@ -192,6 +217,7 @@ class CourseSelectionTest extends IntegrationTestBase {
     }
 
     @Autowired private CourseProblemMapper courseProblemMapper;
+    @Autowired private org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
 
     private Long courseProblemCount(long pid) {
         return courseProblemMapper.selectCount(

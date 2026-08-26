@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.mashangping.common.BizException;
 import com.mashangping.common.ErrorCode;
+import com.mashangping.common.LikeUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -20,7 +21,8 @@ public class PracticeService {
     public Page<PracticeViews.Summary> list(int page, int size, String keyword) {
         LambdaQueryWrapper<Problem> wrapper = new LambdaQueryWrapper<Problem>()
                 .eq(Problem::getIsPublic, true)
-                .like(keyword != null && !keyword.isBlank(), Problem::getTitle, keyword)
+                .like(keyword != null && !keyword.isBlank(), Problem::getTitle,
+                        LikeUtils.escapeForLike(keyword.trim()))
                 .orderByDesc(Problem::getId);
         Page<Problem> result = problemMapper.selectPage(new Page<>(page, size), wrapper);
         // convert 返回 IPage，需按既有 CourseService 模式显式强转
