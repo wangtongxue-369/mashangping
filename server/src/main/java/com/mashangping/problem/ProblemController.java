@@ -1,5 +1,6 @@
 package com.mashangping.problem;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.mashangping.common.ApiResponse;
 import com.mashangping.problem.dto.ProblemUpsertRequest;
@@ -10,6 +11,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/problems")
 @RequiredArgsConstructor
@@ -17,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 public class ProblemController {
 
     private final ProblemService problemService;
+    private final TestCaseMapper testCaseMapper;
 
     public record CreatedProblem(long id, String title) {}
 
@@ -38,7 +42,11 @@ public class ProblemController {
     @GetMapping("/{id}")
     public ApiResponse<ProblemDetailView> detail(@AuthenticationPrincipal TokenPayload me,
                                                  @PathVariable long id) {
-        return ApiResponse.ok(ProblemDetailView.from(problemService.detail(me.uid(), id)));
+        Problem p = problemService.detail(me.uid(), id);
+        List<TestCase> cases = testCaseMapper.selectList(new LambdaQueryWrapper<TestCase>()
+                .eq(TestCase::getProblemId, id)
+                .orderByAsc(TestCase::getId));
+        return ApiResponse.ok(ProblemDetailView.from(p, cases));
     }
 
     @PutMapping("/{id}")

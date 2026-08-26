@@ -1,0 +1,4 @@
+-- 测试点 64KB 上限为闭区间（服务层放行恰 65536 字节）；TEXT 容量仅 65535 字节，升为 MEDIUMTEXT
+ALTER TABLE `test_case`
+    MODIFY COLUMN `input`           MEDIUMTEXT NOT NULL COMMENT 'UTF-8 ≤64KB',
+    MODIFY COLUMN `expected_output` MEDIUMTEXT NOT NULL COMMENT 'UTF-8 ≤64KB';
