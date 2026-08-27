@@ -15,6 +15,8 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -42,6 +44,8 @@ public class JudgeScheduler implements JudgeDispatcher, ApplicationRunner {
     private final ObjectProvider<JudgeExecutor> executorProvider;
     private final ObjectProvider<JudgeProgressPublisher> publisherProvider;
     private final JudgeProperties properties;
+    /** 终态三段写库（judge_detail 整组 + submission 终态 + judge_task DONE）的单事务边界 */
+    private final TransactionTemplate transactionTemplate;
 
     private final AtomicBoolean polling = new AtomicBoolean();
     private final Semaphore permits;
@@ -52,7 +56,8 @@ public class JudgeScheduler implements JudgeDispatcher, ApplicationRunner {
                           AssignmentProblemMapper assignmentProblemMapper,
                           ObjectProvider<JudgeExecutor> executorProvider,
                           ObjectProvider<JudgeProgressPublisher> publisherProvider,
-                          JudgeProperties properties) {
+                          JudgeProperties properties,
+                          PlatformTransactionManager transactionManager) {
         this.taskMapper = taskMapper;
         this.submissionMapper = submissionMapper;
         this.detailMapper = detailMapper;
@@ -62,6 +67,8 @@ public class JudgeScheduler implements JudgeDispatcher, ApplicationRunner {
         this.executorProvider = executorProvider;
         this.publisherProvider = publisherProvider;
         this.properties = properties;
+        // Boot 自动配置的 DataSourceTransactionManager 注入构建；不引入额外 bean 定义
+        this.transactionTemplate = new TransactionTemplate(transactionManager);
         this.permits = new Semaphore(properties.getConcurrent());
     }
 
@@ -245,7 +252,7 @@ public class JudgeScheduler implements JudgeDispatcher, ApplicationRunner {
         }
     }
 
-    /** 终态写回：明细行/聚合状态/计分/任务 DONE，一次交互完成 */
+    /** 终态写回：明细组/submission 终态/task DONE 三段共一个事务，聚合与计分先于事务决出 */
     private void persistTerminal(JudgeProgressPublisher publisher, Submission s,
                                  String compileError, List<PointOutcome> points) {
         int total = s.getTotalCount() == null ? 0 : s.getTotalCount();
@@ -268,28 +275,32 @@ public class JudgeScheduler implements JudgeDispatcher, ApplicationRunner {
         Integer memMax = points.stream().map(PointOutcome::memoryUsedMb)
                 .filter(java.util.Objects::nonNull).max(Integer::compareTo).orElse(null);
 
-        for (PointOutcome o : points) {
-            JudgeDetail d = new JudgeDetail();
-            d.setSubmissionId(s.getId());
-            d.setTestCaseId(o.testCaseId());
-            d.setPointIndex(o.pointIndex());
-            d.setStatus(o.status());
-            d.setTimeUsedMs(o.timeUsedMs());
-            d.setMemoryUsedMb(o.memoryUsedMb());
-            d.setMessage(truncate(o.message(), 2000));
-            detailMapper.insert(d);
-        }
-        submissionMapper.update(null, new LambdaUpdateWrapper<Submission>()
-                .eq(Submission::getId, s.getId())
-                .set(Submission::getStatus, status)
-                .set(Submission::getScore, score)
-                .set(Submission::getPassedCount, passed)
-                .set(Submission::getTimeUsedMs, timeMax)
-                .set(Submission::getMemoryUsedMb, memMax));
-        taskMapper.update(null, new LambdaUpdateWrapper<JudgeTask>()
-                .eq(JudgeTask::getSubmissionId, s.getId())
-                .eq(JudgeTask::getStatus, JudgeTask.STATUS_RUNNING)
-                .set(JudgeTask::getStatus, JudgeTask.STATUS_DONE));
+        // 单事务：judge_detail 整组插入 + submission 终态 UPDATE + judge_task DONE，
+        // 任一段失败整体回滚（杜绝半组明细重判后重复/孤儿明细）；聚合抛点已在事务开启之前
+        transactionTemplate.executeWithoutResult(txStatus -> {
+            for (PointOutcome o : points) {
+                JudgeDetail d = new JudgeDetail();
+                d.setSubmissionId(s.getId());
+                d.setTestCaseId(o.testCaseId());
+                d.setPointIndex(o.pointIndex());
+                d.setStatus(o.status());
+                d.setTimeUsedMs(o.timeUsedMs());
+                d.setMemoryUsedMb(o.memoryUsedMb());
+                d.setMessage(truncate(o.message(), 2000));
+                detailMapper.insert(d);
+            }
+            submissionMapper.update(null, new LambdaUpdateWrapper<Submission>()
+                    .eq(Submission::getId, s.getId())
+                    .set(Submission::getStatus, status)
+                    .set(Submission::getScore, score)
+                    .set(Submission::getPassedCount, passed)
+                    .set(Submission::getTimeUsedMs, timeMax)
+                    .set(Submission::getMemoryUsedMb, memMax));
+            taskMapper.update(null, new LambdaUpdateWrapper<JudgeTask>()
+                    .eq(JudgeTask::getSubmissionId, s.getId())
+                    .eq(JudgeTask::getStatus, JudgeTask.STATUS_RUNNING)
+                    .set(JudgeTask::getStatus, JudgeTask.STATUS_DONE));
+        });
 
         final String st = status;
         final Integer sc = score;

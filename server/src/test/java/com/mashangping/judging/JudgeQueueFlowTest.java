@@ -20,6 +20,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.PlatformTransactionManager;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -46,6 +47,7 @@ class JudgeQueueFlowTest extends IntegrationTestBase {
     @Autowired CourseMapper courseMapper;
     @Autowired AssignmentMapper assignmentMapper;
     @Autowired AssignmentProblemMapper assignmentProblemMapper;
+    @Autowired PlatformTransactionManager transactionManager;
     @Autowired JdbcTemplate jdbc;
 
     long uid;
@@ -90,7 +92,8 @@ class JudgeQueueFlowTest extends IntegrationTestBase {
     private JudgeScheduler newScheduler(int concurrent) {
         return new JudgeScheduler(judgeTaskMapper, submissionMapper, judgeDetailMapper,
                 problemMapper, testCaseMapper, assignmentProblemMapper,
-                providerOf(stub), emptyPublisher(), props(concurrent));
+                providerOf(stub), emptyPublisher(), props(concurrent),
+                transactionManager);
     }
 
     private ObjectProvider<JudgeProgressPublisher> emptyPublisher() {
@@ -229,7 +232,8 @@ class JudgeQueueFlowTest extends IntegrationTestBase {
         Submission s = seedPendingSubmission();
         JudgeScheduler scheduler = new JudgeScheduler(judgeTaskMapper, submissionMapper,
                 judgeDetailMapper, problemMapper, testCaseMapper, assignmentProblemMapper,
-                emptyExecutor(), emptyPublisher(), props(3));
+                emptyExecutor(), emptyPublisher(), props(3),
+                transactionManager);
         scheduler.pollTick();
         assertThat(taskOf(s.getId()).getStatus()).isEqualTo(JudgeTask.STATUS_PENDING);
         assertThat(submissionOf(s.getId()).getStatus()).isEqualTo(Submission.STATUS_PENDING);
