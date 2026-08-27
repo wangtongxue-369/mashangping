@@ -24,6 +24,12 @@ class AssignmentStatusTest {
     }
 
     @Test
+    void at_start_boundary_is_in_progress() {
+        // 终审补强边界点一：now==startAt 已越过开始门，属进行中（!isBefore 分支）
+        assertThat(AssignmentStatus.of(START, START, DUE, 0)).isEqualTo(AssignmentStatus.IN_PROGRESS);
+    }
+
+    @Test
     void at_due_boundary_with_zero_late_is_closed() {
         // lateDays=0：无宽限窗口，到点即关
         assertThat(AssignmentStatus.of(DUE, START, DUE, 0)).isEqualTo(AssignmentStatus.CLOSED);
@@ -32,6 +38,13 @@ class AssignmentStatusTest {
     @Test
     void inside_late_window_is_late_window() {
         assertThat(AssignmentStatus.of(DUE.plusDays(2), START, DUE, 3))
+                .isEqualTo(AssignmentStatus.LATE_WINDOW);
+    }
+
+    @Test
+    void at_late_deadline_equal_still_late_window() {
+        // 终审补强边界点二：now==宽限终点仍在窗内（isEqual 分支，lateDays>0 时到点不立即关）
+        assertThat(AssignmentStatus.of(DUE.plusDays(3), START, DUE, 3))
                 .isEqualTo(AssignmentStatus.LATE_WINDOW);
     }
 

@@ -193,4 +193,23 @@ class ProblemCrudTest extends IntegrationTestBase {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(40000));
     }
+
+    @Test
+    void keyword_treats_percent_and_underscore_as_literals() throws Exception {
+        // 终审补强：keyword 的 % 与 _ 须按字面匹配。干扰项与目标仅差一个字符——
+        // 若转义失效（% 作任意串通配、_ 作单字符通配），"50%折扣_题" 模式会误命中干扰项
+        mockMvc.perform(post("/api/problems").header("Authorization", teacherA())
+                        .contentType(MediaType.APPLICATION_JSON).content(createBody("A50%折扣_题")))
+                .andExpect(jsonPath("$.code").value(0));
+        mockMvc.perform(post("/api/problems").header("Authorization", teacherA())
+                        .contentType(MediaType.APPLICATION_JSON).content(createBody("A50X折扣_题")))
+                .andExpect(jsonPath("$.code").value(0));
+
+        mockMvc.perform(get("/api/problems").param("page", "1").param("size", "20")
+                        .param("keyword", "50%折扣_题")
+                        .header("Authorization", teacherA()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.total").value(1))
+                .andExpect(jsonPath("$.data.records[0].title").value("A50%折扣_题"));
+    }
 }

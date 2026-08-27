@@ -115,6 +115,47 @@ class AssignmentCrudTest extends IntegrationTestBase {
     }
 
     @Test
+    void late_days_negative_one_rejected() throws Exception {
+        // 终审补强：下界外（-1）与上界外（上方用例的 8）同拒
+        LocalDateTime start = LocalDateTime.now().plusDays(1);
+        LocalDateTime due = start.plusHours(2);
+        mockMvc.perform(post("/api/courses/" + courseIdA + "/assignments")
+                        .header("Authorization", teacherA())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json("负宽限", start, due, -1, false)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(40000));
+    }
+
+    @Test
+    void late_days_max_seven_accepted() throws Exception {
+        // 终审补强：恰好 7 天处于合法区间，放行
+        LocalDateTime start = LocalDateTime.now().plusDays(1);
+        LocalDateTime due = start.plusHours(2);
+        mockMvc.perform(post("/api/courses/" + courseIdA + "/assignments")
+                        .header("Authorization", teacherA())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json("满宽限", start, due, 7, false)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0));
+    }
+
+    @Test
+    void description_over_128kb_rejected() throws Exception {
+        // 终审补强：>131072 UTF-8 字节（汉字 3 字节/字）创建拒绝
+        LocalDateTime start = LocalDateTime.now().plusDays(1);
+        LocalDateTime due = start.plusHours(2);
+        String bigDescription = "说明超限。" + "描".repeat(50000); // 约 150KB
+        mockMvc.perform(post("/api/courses/" + courseIdA + "/assignments")
+                        .header("Authorization", teacherA())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"大说明作业\",\"startAt\":\"" + start
+                                + "\",\"dueAt\":\"" + due + "\",\"description\":\"" + bigDescription + "\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(40000));
+    }
+
+    @Test
     void update_toggles_publish_and_persists() throws Exception {
         LocalDateTime start = LocalDateTime.now().plusDays(1);
         LocalDateTime due = start.plusHours(2);

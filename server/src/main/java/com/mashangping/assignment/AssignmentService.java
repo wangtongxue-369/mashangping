@@ -13,6 +13,7 @@ import com.mashangping.problem.CourseProblemMapper;
 import com.mashangping.problem.Problem;
 import com.mashangping.problem.ProblemMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -167,7 +168,12 @@ public class AssignmentService {
             ap.setProblemId(item.problemId());
             ap.setScore(item.score());
             ap.setSortOrder(next++);
-            assignmentProblemMapper.insert(ap);
+            try {
+                assignmentProblemMapper.insert(ap);
+            } catch (DuplicateKeyException e) {
+                // 并发兜底：两个 addProblems 越过预检查撞 uk_assignment_problem，归一参数错误而非 50000
+                throw new BizException(ErrorCode.PARAM_INVALID, "题目已在本作业中");
+            }
         }
     }
 

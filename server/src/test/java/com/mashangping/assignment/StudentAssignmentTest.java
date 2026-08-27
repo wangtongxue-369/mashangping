@@ -20,11 +20,15 @@ import org.springframework.http.MediaType;
 
 import java.time.LocalDateTime;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import java.util.List;
 
 class StudentAssignmentTest extends IntegrationTestBase {
 
@@ -212,5 +216,41 @@ class StudentAssignmentTest extends IntegrationTestBase {
         mockMvc.perform(get("/api/courses/" + courseIdA + "/assignments/" + draftAssignmentId + "/problems")
                         .header("Authorization", student()))
                 .andExpect(jsonPath("$.code").value(40400));
+    }
+
+    @Test
+    void teacher_unpublish_hides_assignment_from_student_list() throws Exception {
+        // 终审补强：发布开关双向——true 发布可见，false 撤回后学生列表不再含该作业
+        long id = createAssignment("撤回作业", LocalDateTime.now().minusHours(1),
+                LocalDateTime.now().plusDays(2), true);
+        assertThat(studentVisibleIds()).contains(id);
+
+        mockMvc.perform(put("/api/assignments/" + id)
+                        .header("Authorization", teacher())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"撤回作业\",\"startAt\":\"" + LocalDateTime.now().minusHours(1)
+                                + "\",\"dueAt\":\"" + LocalDateTime.now().plusDays(2)
+                                + "\",\"isPublished\":false}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0));
+
+        assertThat(studentVisibleIds()).doesNotContain(id);
+    }
+
+    @Test
+    void student_forbidden_on_teacher_assignment_detail_endpoint() throws Exception {
+        // 终审补强：学生打教师详情端点（@PreAuthorize TEACHER）→ 真 HTTP 403 + 40300
+        mockMvc.perform(get("/api/assignments/" + publishedAssignmentId)
+                        .header("Authorization", student()))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value(40300));
+    }
+
+    private List<Long> studentVisibleIds() throws Exception {
+        String body = mockMvc.perform(get("/api/courses/" + courseIdA + "/assignments")
+                        .header("Authorization", student()))
+                .andReturn().getResponse().getContentAsString(java.nio.charset.StandardCharsets.UTF_8);
+        return ((List<?>) com.jayway.jsonpath.JsonPath.read(body, "$.data.records[*].id"))
+                .stream().map(o -> ((Number) o).longValue()).toList();
     }
 }

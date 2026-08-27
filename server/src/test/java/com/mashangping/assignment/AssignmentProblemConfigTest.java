@@ -185,6 +185,12 @@ class AssignmentProblemConfigTest extends IntegrationTestBase {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"score\":50}"))
                 .andExpect(jsonPath("$.code").value(0));
+
+        // 终审补强：改分后详情回读确认落库（p1 排序在前占 problems[0]）
+        mockMvc.perform(get("/api/assignments/" + assignmentId).header("Authorization", teacherA()))
+                .andExpect(jsonPath("$.data.problems[0].problemId").value((int) p1))
+                .andExpect(jsonPath("$.data.problems[0].score").value(50));
+
         mockMvc.perform(put("/api/assignments/" + assignmentId + "/problems/" + p1)
                         .header("Authorization", teacherA())
                         .contentType(MediaType.APPLICATION_JSON)

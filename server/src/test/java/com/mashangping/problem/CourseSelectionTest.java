@@ -189,13 +189,17 @@ class CourseSelectionTest extends IntegrationTestBase {
                 .andExpect(jsonPath("$.code").value(0));
 
         // 模拟历史脏数据：course_problem 行指向已不存在题目（临时关外键绕开 V5 FK 约束）
+        // 终审卫生：try/finally 强制复位，插入失败也不把 FK 关闭状态泄漏给后续测试
         jdbcTemplate.execute("SET FOREIGN_KEY_CHECKS=0");
-        CourseProblem dirty = new CourseProblem();
-        dirty.setCourseId(courseIdA);
-        dirty.setProblemId(987654321L);
-        dirty.setSortOrder(99);
-        courseProblemMapper.insert(dirty);
-        jdbcTemplate.execute("SET FOREIGN_KEY_CHECKS=1");
+        try {
+            CourseProblem dirty = new CourseProblem();
+            dirty.setCourseId(courseIdA);
+            dirty.setProblemId(987654321L);
+            dirty.setSortOrder(99);
+            courseProblemMapper.insert(dirty);
+        } finally {
+            jdbcTemplate.execute("SET FOREIGN_KEY_CHECKS=1");
+        }
 
         mockMvc.perform(get("/api/courses/" + courseIdA + "/problems")
                         .header("Authorization", teacherA()))
