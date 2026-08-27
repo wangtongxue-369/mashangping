@@ -2,6 +2,7 @@ package com.mashangping.course;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.mashangping.common.ApiResponse;
+import com.mashangping.common.PageUtils;
 import com.mashangping.course.dto.CourseUpsertRequest;
 import com.mashangping.security.TokenPayload;
 import jakarta.validation.Valid;
@@ -32,7 +33,8 @@ public class CourseController {
                                               @RequestParam(defaultValue = "1") int page,
                                               @RequestParam(defaultValue = "20") int size,
                                               @RequestParam(required = false) String keyword) {
-        return ApiResponse.ok(courseService.listMine(me.uid(), page, size, keyword));
+        return ApiResponse.ok(courseService.listMine(me.uid(),
+                PageUtils.page(page), PageUtils.size(size), keyword));
     }
 
     @GetMapping("/{id}")
@@ -46,6 +48,13 @@ public class CourseController {
                                     @PathVariable long id,
                                     @Valid @RequestBody CourseUpsertRequest request) {
         courseService.update(me.uid(), id, request);
+        return ApiResponse.ok();
+    }
+
+    @DeleteMapping("/{id}")
+    public ApiResponse<Void> delete(@AuthenticationPrincipal TokenPayload me,
+                                    @PathVariable long id) {
+        courseService.delete(me.uid(), id);
         return ApiResponse.ok();
     }
 }

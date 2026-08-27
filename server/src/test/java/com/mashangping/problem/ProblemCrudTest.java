@@ -2,6 +2,8 @@ package com.mashangping.problem;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.mashangping.IntegrationTestBase;
+import com.mashangping.course.Course;
+import com.mashangping.course.CourseMapper;
 import com.mashangping.security.JwtService;
 import com.mashangping.user.User;
 import com.mashangping.user.UserMapper;
@@ -19,6 +21,7 @@ class ProblemCrudTest extends IntegrationTestBase {
     @Autowired private JwtService jwtService;
     @Autowired private UserMapper userMapper;
     @Autowired private CourseProblemMapper courseProblemMapper;
+    @Autowired private CourseMapper courseMapper;
 
     private long uidA;
     private long uidB;
@@ -136,9 +139,13 @@ class ProblemCrudTest extends IntegrationTestBase {
                         .contentType(MediaType.APPLICATION_JSON).content(createBody("被引题")));
         long id = ownedProblemIdByTitle(teacherA(), "被引题");
 
-        // 直接落库模拟"已被某课程选用"（选题 API 属 Task 4，此处只验证保护本身）
+        // 直接落库模拟"已被某课程选用"（选题 API 属 Task 4，此处只验证保护本身；
+        // V5 外键 fk_cp_course 拒绝悬空 course_id，故先建真实课程行）
+        Course c = new Course();
+        c.setName("引用课"); c.setTerm("2025-2026-1"); c.setTeacherId(uidA);
+        courseMapper.insert(c);
         CourseProblem ref = new CourseProblem();
-        ref.setCourseId(887001L);
+        ref.setCourseId(c.getId());
         ref.setProblemId(id);
         ref.setSortOrder(1);
         courseProblemMapper.insert(ref);
@@ -185,5 +192,24 @@ class ProblemCrudTest extends IntegrationTestBase {
                         .content("{\"title\":\"大题面\",\"description\":\"" + bigDescription + "\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(40000));
+    }
+
+    @Test
+    void keyword_treats_percent_and_underscore_as_literals() throws Exception {
+        // 终审补强：keyword 的 % 与 _ 须按字面匹配。干扰项与目标仅差一个字符——
+        // 若转义失效（% 作任意串通配、_ 作单字符通配），"50%折扣_题" 模式会误命中干扰项
+        mockMvc.perform(post("/api/problems").header("Authorization", teacherA())
+                        .contentType(MediaType.APPLICATION_JSON).content(createBody("A50%折扣_题")))
+                .andExpect(jsonPath("$.code").value(0));
+        mockMvc.perform(post("/api/problems").header("Authorization", teacherA())
+                        .contentType(MediaType.APPLICATION_JSON).content(createBody("A50X折扣_题")))
+                .andExpect(jsonPath("$.code").value(0));
+
+        mockMvc.perform(get("/api/problems").param("page", "1").param("size", "20")
+                        .param("keyword", "50%折扣_题")
+                        .header("Authorization", teacherA()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.total").value(1))
+                .andExpect(jsonPath("$.data.records[0].title").value("A50%折扣_题"));
     }
 }

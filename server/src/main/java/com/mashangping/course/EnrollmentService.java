@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.mashangping.common.BizException;
 import com.mashangping.common.ErrorCode;
+import com.mashangping.common.LikeUtils;
 import com.mashangping.user.User;
 import com.mashangping.user.UserMapper;
 import lombok.RequiredArgsConstructor;
@@ -89,7 +90,7 @@ public class EnrollmentService {
                 .eq(status != null && !status.isBlank(), Enrollment::getStatus, status)
                 .orderByAsc(Enrollment::getId);
         if (keyword != null && !keyword.isBlank()) {
-            String kw = keyword.trim();
+            String kw = LikeUtils.escapeForLike(keyword.trim());
             // keyword 命中账号实名的学生集合（ACTIVE 行的第三匹配路径）
             List<Long> matchedUserIds = userMapper.selectList(new LambdaQueryWrapper<User>()
                             .eq(User::getRole, User.ROLE_STUDENT)

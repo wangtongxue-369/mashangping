@@ -1,16 +1,23 @@
 package com.mashangping.problem;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.mashangping.assignment.Assignment;
+import com.mashangping.assignment.AssignmentMapper;
+import com.mashangping.assignment.AssignmentProblem;
+import com.mashangping.assignment.AssignmentProblemMapper;
 import com.mashangping.common.BizException;
 import com.mashangping.common.ErrorCode;
 import com.mashangping.course.CourseService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -23,6 +30,8 @@ public class CourseSelectionService {
     private final CourseProblemMapper courseProblemMapper;
     private final ProblemMapper problemMapper;
     private final TestCaseMapper testCaseMapper;
+    private final AssignmentMapper assignmentMapper;
+    private final AssignmentProblemMapper assignmentProblemMapper;
 
     /** 选入：双重归属——先课程门再题门（只能选自己名下的题），重复选 40402 */
     public void select(long uid, long courseId, long problemId) {
@@ -38,7 +47,12 @@ public class CourseSelectionService {
         cp.setCourseId(courseId);
         cp.setProblemId(problemId);
         cp.setSortOrder(nextSortOrder(courseId));
-        courseProblemMapper.insert(cp);
+        try {
+            courseProblemMapper.insert(cp);
+        } catch (DuplicateKeyException e) {
+            // 并发兜底：两请求同时选同一题越过 pre-check，唯一约束冲突归一 40402
+            throw new BizException(ErrorCode.COURSE_PROBLEM_DUPLICATE);
+        }
     }
 
     public Page<CourseProblemView> list(long uid, long courseId, int page, int size) {
@@ -55,14 +69,21 @@ public class CourseSelectionService {
         Map<Long, Problem> problems = ids.isEmpty() ? Map.of()
                 : problemMapper.selectBatchIds(ids).stream()
                         .collect(Collectors.toMap(Problem::getId, Function.identity()));
-        Map<Long, Long> caseCounts = testCaseMapper.selectList(
-                        new LambdaQueryWrapper<TestCase>().in(!ids.isEmpty(), TestCase::getProblemId, ids))
-                .stream()
-                .collect(Collectors.groupingBy(TestCase::getProblemId, Collectors.counting()));
+        List<Map<String, Object>> countRows = testCaseMapper.selectMaps(
+                new QueryWrapper<TestCase>()
+                        .select("problem_id", "COUNT(*) AS cnt")
+                        .in(!ids.isEmpty(), "problem_id", ids)
+                        .groupBy("problem_id"));
+        Map<Long, Long> caseCounts = countRows.stream().collect(Collectors.toMap(
+                row -> ((Number) row.get("problem_id")).longValue(),
+                row -> ((Number) row.get("cnt")).longValue()));
 
         List<CourseProblemView> rows = relations.stream()
                 .map(cp -> {
                     Problem p = problems.get(cp.getProblemId());
+                    if (p == null) {
+                        return null; // 关联行存在但题目已消失（异常数据）：跳过不炸
+                    }
                     return new CourseProblemView(cp.getProblemId(), p.getTitle(),
                             Languages.parse(p.getAllowedLanguages()),
                             p.getTimeLimitMs(), p.getMemoryLimitMb(),
@@ -70,6 +91,7 @@ public class CourseSelectionService {
                             caseCounts.getOrDefault(cp.getProblemId(), 0L),
                             cp.getSortOrder());
                 })
+                .filter(Objects::nonNull)
                 .sorted(Comparator.comparingInt(CourseProblemView::sortOrder))
                 .toList();
 
@@ -80,9 +102,20 @@ public class CourseSelectionService {
         return result;
     }
 
-    /** 移出：只删关联不动题 */
+    /** 移出：先查被本课程作业引用 → 40016；未被引用才删关联 */
     public void remove(long uid, long courseId, long problemId) {
         courseService.getOwned(uid, courseId);
+        List<Long> assignmentIds = assignmentMapper.selectList(
+                        new LambdaQueryWrapper<Assignment>().eq(Assignment::getCourseId, courseId))
+                .stream().map(Assignment::getId).toList();
+        if (!assignmentIds.isEmpty()) {
+            Long refs = assignmentProblemMapper.selectCount(new LambdaQueryWrapper<AssignmentProblem>()
+                    .eq(AssignmentProblem::getProblemId, problemId)
+                    .in(AssignmentProblem::getAssignmentId, assignmentIds));
+            if (refs != null && refs > 0) {
+                throw new BizException(ErrorCode.PROBLEM_LOCKED_BY_ASSIGNMENT);
+            }
+        }
         courseProblemMapper.delete(new LambdaQueryWrapper<CourseProblem>()
                 .eq(CourseProblem::getCourseId, courseId)
                 .eq(CourseProblem::getProblemId, problemId));

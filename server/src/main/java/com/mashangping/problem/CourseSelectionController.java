@@ -2,7 +2,9 @@ package com.mashangping.problem;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.mashangping.common.ApiResponse;
+import com.mashangping.common.PageUtils;
 import com.mashangping.security.TokenPayload;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -22,7 +24,7 @@ public class CourseSelectionController {
     @PostMapping
     public ApiResponse<Void> select(@AuthenticationPrincipal TokenPayload me,
                                     @PathVariable long courseId,
-                                    @RequestBody SelectProblemRequest request) {
+                                    @Valid @RequestBody SelectProblemRequest request) {
         courseSelectionService.select(me.uid(), courseId, request.problemId());
         return ApiResponse.ok();
     }
@@ -32,7 +34,8 @@ public class CourseSelectionController {
                                                      @PathVariable long courseId,
                                                      @RequestParam(defaultValue = "1") int page,
                                                      @RequestParam(defaultValue = "20") int size) {
-        return ApiResponse.ok(courseSelectionService.list(me.uid(), courseId, page, size));
+        return ApiResponse.ok(courseSelectionService.list(me.uid(), courseId,
+                PageUtils.page(page), PageUtils.size(size)));
     }
 
     @DeleteMapping("/{problemId}")

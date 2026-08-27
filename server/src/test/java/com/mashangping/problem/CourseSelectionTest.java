@@ -13,6 +13,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 
+import java.time.LocalDateTime;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -179,6 +181,35 @@ class CourseSelectionTest extends IntegrationTestBase {
     }
 
     @Test
+    void list_skips_rows_with_missing_problem_record() throws Exception {
+        long pid = createProblem(uidA, "正常题", false);
+        mockMvc.perform(post("/api/courses/" + courseIdA + "/problems")
+                        .header("Authorization", teacherA())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"problemId\":" + pid + "}"))
+                .andExpect(jsonPath("$.code").value(0));
+
+        // 模拟历史脏数据：course_problem 行指向已不存在题目（临时关外键绕开 V5 FK 约束）
+        // 终审卫生：try/finally 强制复位，插入失败也不把 FK 关闭状态泄漏给后续测试
+        jdbcTemplate.execute("SET FOREIGN_KEY_CHECKS=0");
+        try {
+            CourseProblem dirty = new CourseProblem();
+            dirty.setCourseId(courseIdA);
+            dirty.setProblemId(987654321L);
+            dirty.setSortOrder(99);
+            courseProblemMapper.insert(dirty);
+        } finally {
+            jdbcTemplate.execute("SET FOREIGN_KEY_CHECKS=1");
+        }
+
+        mockMvc.perform(get("/api/courses/" + courseIdA + "/problems")
+                        .header("Authorization", teacherA()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                // 脏行被静默跳过：排序最大的正常行 sortOrder 仍可见
+                .andExpect(jsonPath("$.data.total").value(1));
+    }
+
+    @Test
     void other_teacher_cannot_touch_my_course_selection() throws Exception {
         long pid = createProblem(uidB, "乙的题", false);
         mockMvc.perform(post("/api/courses/" + courseIdA + "/problems")
@@ -191,7 +222,46 @@ class CourseSelectionTest extends IntegrationTestBase {
                 .andExpect(jsonPath("$.code").value(40400));
     }
 
+    @Test
+    void course_selection_remove_blocked_while_assignment_references() throws Exception {
+        long p1 = createProblem(uidA, "被作业引用题", false);
+        mockMvc.perform(post("/api/courses/" + courseIdA + "/problems")
+                        .header("Authorization", teacherA())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"problemId\":" + p1 + "}"))
+                .andExpect(jsonPath("$.code").value(0));
+
+        // 本课程建作业并批量选入该题（作业域端点）
+        LocalDateTime start = LocalDateTime.now().plusDays(1);
+        LocalDateTime due = start.plusHours(2);
+        String body = mockMvc.perform(post("/api/courses/" + courseIdA + "/assignments")
+                        .header("Authorization", teacherA())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"引用作业\",\"startAt\":\"" + start
+                                + "\",\"dueAt\":\"" + due + "\"}"))
+                .andReturn().getResponse().getContentAsString(java.nio.charset.StandardCharsets.UTF_8);
+        long assignmentId = ((Number) com.jayway.jsonpath.JsonPath.read(body, "$.data.id")).longValue();
+        mockMvc.perform(post("/api/assignments/" + assignmentId + "/problems")
+                        .header("Authorization", teacherA())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"items\":[{\"problemId\":" + p1 + ",\"score\":10}]}"))
+                .andExpect(jsonPath("$.code").value(0));
+
+        // 被本课程作业引用 → 移出课程选题 40016
+        mockMvc.perform(delete("/api/courses/" + courseIdA + "/problems/" + p1)
+                        .header("Authorization", teacherA()))
+                .andExpect(jsonPath("$.code").value(40016));
+
+        // 从作业移除后 → 课程移出放行
+        mockMvc.perform(delete("/api/assignments/" + assignmentId + "/problems/" + p1)
+                        .header("Authorization", teacherA()))
+                .andExpect(jsonPath("$.code").value(0));
+        mockMvc.perform(delete("/api/courses/" + courseIdA + "/problems/" + p1)
+                        .header("Authorization", teacherA()))
+                .andExpect(jsonPath("$.code").value(0));
+    }
+
     @Autowired private CourseProblemMapper courseProblemMapper;
+    @Autowired private org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
 
     private Long courseProblemCount(long pid) {
         return courseProblemMapper.selectCount(

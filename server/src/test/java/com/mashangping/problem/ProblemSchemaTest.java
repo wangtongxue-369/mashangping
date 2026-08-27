@@ -1,6 +1,8 @@
 package com.mashangping.problem;
 
 import com.mashangping.IntegrationTestBase;
+import com.mashangping.course.Course;
+import com.mashangping.course.CourseMapper;
 import com.mashangping.user.User;
 import com.mashangping.user.UserMapper;
 import org.junit.jupiter.api.Test;
@@ -16,6 +18,7 @@ class ProblemSchemaTest extends IntegrationTestBase {
     @Autowired private TestCaseMapper testCaseMapper;
     @Autowired private CourseProblemMapper courseProblemMapper;
     @Autowired private UserMapper userMapper;
+    @Autowired private CourseMapper courseMapper;
 
     @Test
     void problem_and_testcase_roundtrip_with_defaults() {
@@ -47,15 +50,26 @@ class ProblemSchemaTest extends IntegrationTestBase {
 
     @Test
     void course_problem_unique_constraint_rejects_duplicate_pair() {
+        // V5 外键 fk_cp_course/fk_cp_problem 拒绝悬空引用，先建真实 course/problem 父行
+        Course c = new Course();
+        c.setName("选题课"); c.setTerm("2025-2026-1"); c.setTeacherId(990001L);
+        courseMapper.insert(c);
+        Problem p = new Problem();
+        p.setTeacherId(990001L);
+        p.setTitle("唯一约束题");
+        p.setDescription("# 题面");
+        p.setIsPublic(false);
+        problemMapper.insert(p);
+
         CourseProblem cp = new CourseProblem();
-        cp.setCourseId(990002L);
-        cp.setProblemId(990003L);
+        cp.setCourseId(c.getId());
+        cp.setProblemId(p.getId());
         cp.setSortOrder(1);
         courseProblemMapper.insert(cp);
 
         CourseProblem dup = new CourseProblem();
-        dup.setCourseId(990002L);
-        dup.setProblemId(990003L);
+        dup.setCourseId(c.getId());
+        dup.setProblemId(p.getId());
         dup.setSortOrder(2);
         assertThatThrownBy(() -> courseProblemMapper.insert(dup))
                 .isInstanceOf(DuplicateKeyException.class);

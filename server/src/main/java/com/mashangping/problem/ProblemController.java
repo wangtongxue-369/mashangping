@@ -3,6 +3,7 @@ package com.mashangping.problem;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.mashangping.common.ApiResponse;
+import com.mashangping.common.PageUtils;
 import com.mashangping.problem.dto.ProblemUpsertRequest;
 import com.mashangping.security.TokenPayload;
 import jakarta.validation.Valid;
@@ -36,7 +37,8 @@ public class ProblemController {
                                                       @RequestParam(defaultValue = "1") int page,
                                                       @RequestParam(defaultValue = "20") int size,
                                                       @RequestParam(required = false) String keyword) {
-        return ApiResponse.ok(problemService.listMine(me.uid(), page, size, keyword));
+        return ApiResponse.ok(problemService.listMine(me.uid(),
+                PageUtils.page(page), PageUtils.size(size), keyword));
     }
 
     @GetMapping("/{id}")

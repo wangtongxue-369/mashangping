@@ -2,6 +2,7 @@ package com.mashangping.course;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.mashangping.common.ApiResponse;
+import com.mashangping.common.PageUtils;
 import com.mashangping.course.dto.AddStudentRequest;
 import com.mashangping.security.TokenPayload;
 import jakarta.validation.Valid;
@@ -39,7 +40,8 @@ public class CourseMemberController {
                                                   @RequestParam(defaultValue = "1") int page,
                                                   @RequestParam(defaultValue = "20") int size) {
         return ApiResponse.ok(enrollmentService.list(
-                me.uid(), courseId, status, keyword, page, size));
+                me.uid(), courseId, status, keyword,
+                PageUtils.page(page), PageUtils.size(size)));
     }
 
     @DeleteMapping("/api/courses/{courseId}/students/{enrollmentId}")
