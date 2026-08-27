@@ -18,6 +18,9 @@ public enum ErrorCode {
     PROBLEM_LOCKED_BY_ASSIGNMENT(40016, "题目已被本课程的作业选用，无法从课程移出"),
     EMAIL_CONFLICT(40017, "该邮箱已被注册"),
     COURSE_PROBLEM_DUPLICATE(40402, "该题目已在本课程中"),
+    SUBMISSION_TOO_FREQUENT(40018, "提交过于频繁，请稍候再试"),
+    CODE_TOO_LARGE(40019, "代码超出大小限制"),
+    PROBLEM_HAS_SUBMISSIONS(40020, "该题已有学生的提交记录，无法从课程移出"),
     SYSTEM_ERROR(50000, "系统繁忙，请稍后再试");
 
     private final int code;
