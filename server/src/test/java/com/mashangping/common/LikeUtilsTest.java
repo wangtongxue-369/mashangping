@@ -12,4 +12,10 @@ class LikeUtilsTest {
         assertThat(LikeUtils.escapeForLike("普通关键字")).isEqualTo("普通关键字");
         assertThat(LikeUtils.escapeForLike("")).isEqualTo("");
     }
+
+    @Test
+    void underscore_alone_is_escaped() {
+        assertThat(LikeUtils.escapeForLike("a_b")).isEqualTo("a\\_b");
+        assertThat(LikeUtils.escapeForLike("_")).isEqualTo("\\_");
+    }
 }
