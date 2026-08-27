@@ -7,6 +7,7 @@ import com.mashangping.assignment.dto.AssignmentScoreRequest;
 import com.mashangping.assignment.dto.AssignmentUpsertRequest;
 import com.mashangping.common.BizException;
 import com.mashangping.common.ErrorCode;
+import com.mashangping.course.CourseMapper;
 import com.mashangping.course.CourseService;
 import com.mashangping.problem.CourseProblem;
 import com.mashangping.problem.CourseProblemMapper;
@@ -32,6 +33,7 @@ public class AssignmentService {
     private static final int MAX_DESCRIPTION_BYTES = 131072; // 128KB
 
     private final CourseService courseService;
+    private final CourseMapper courseMapper;
     private final AssignmentMapper assignmentMapper;
     private final AssignmentProblemMapper assignmentProblemMapper;
     private final ProblemMapper problemMapper;
@@ -141,6 +143,7 @@ public class AssignmentService {
     @Transactional
     public void addProblems(long teacherUid, long assignmentId, AssignmentProblemsRequest request) {
         Assignment a = getOwned(teacherUid, assignmentId);
+        courseMapper.selectByIdForUpdate(a.getCourseId());   // 每课互斥：与 remove 对称
         List<AssignmentProblemsRequest.Item> items = request.items();
 
         Set<Long> scope = courseProblemMapper.selectList(new LambdaQueryWrapper<CourseProblem>()

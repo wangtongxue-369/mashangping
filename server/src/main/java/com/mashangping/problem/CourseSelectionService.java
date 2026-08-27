@@ -9,10 +9,14 @@ import com.mashangping.assignment.AssignmentProblem;
 import com.mashangping.assignment.AssignmentProblemMapper;
 import com.mashangping.common.BizException;
 import com.mashangping.common.ErrorCode;
+import com.mashangping.course.CourseMapper;
 import com.mashangping.course.CourseService;
+import com.mashangping.judging.Submission;
+import com.mashangping.judging.SubmissionMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Comparator;
 import java.util.List;
@@ -32,6 +36,8 @@ public class CourseSelectionService {
     private final TestCaseMapper testCaseMapper;
     private final AssignmentMapper assignmentMapper;
     private final AssignmentProblemMapper assignmentProblemMapper;
+    private final CourseMapper courseMapper;
+    private final SubmissionMapper submissionMapper;
 
     /** 选入：双重归属——先课程门再题门（只能选自己名下的题），重复选 40402 */
     public void select(long uid, long courseId, long problemId) {
@@ -102,17 +108,27 @@ public class CourseSelectionService {
         return result;
     }
 
-    /** 移出：先查被本课程作业引用 → 40016；未被引用才删关联 */
+    /** 移出：每课行锁先行 → 40020(有作业引用下有提交) → 40016(被作业引用) → 删关联 */
+    @Transactional
     public void remove(long uid, long courseId, long problemId) {
         courseService.getOwned(uid, courseId);
+        courseMapper.selectByIdForUpdate(courseId);          // 与 addProblems 共享同一互斥点
         List<Long> assignmentIds = assignmentMapper.selectList(
                         new LambdaQueryWrapper<Assignment>().eq(Assignment::getCourseId, courseId))
                 .stream().map(Assignment::getId).toList();
         if (!assignmentIds.isEmpty()) {
-            Long refs = assignmentProblemMapper.selectCount(new LambdaQueryWrapper<AssignmentProblem>()
-                    .eq(AssignmentProblem::getProblemId, problemId)
-                    .in(AssignmentProblem::getAssignmentId, assignmentIds));
-            if (refs != null && refs > 0) {
+            List<AssignmentProblem> refs = assignmentProblemMapper.selectList(
+                    new LambdaQueryWrapper<AssignmentProblem>()
+                            .eq(AssignmentProblem::getProblemId, problemId)
+                            .in(AssignmentProblem::getAssignmentId, assignmentIds));
+            if (!refs.isEmpty()) {
+                List<Long> refIds = refs.stream().map(AssignmentProblem::getId).toList();
+                Long submissions = submissionMapper.selectCount(
+                        new LambdaQueryWrapper<Submission>()
+                                .in(Submission::getAssignmentProblemId, refIds));
+                if (submissions != null && submissions > 0) {
+                    throw new BizException(ErrorCode.PROBLEM_HAS_SUBMISSIONS);
+                }
                 throw new BizException(ErrorCode.PROBLEM_LOCKED_BY_ASSIGNMENT);
             }
         }
