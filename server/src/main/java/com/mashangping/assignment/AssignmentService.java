@@ -2,10 +2,14 @@ package com.mashangping.assignment;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.mashangping.assignment.dto.AssignmentProblemsRequest;
+import com.mashangping.assignment.dto.AssignmentScoreRequest;
 import com.mashangping.assignment.dto.AssignmentUpsertRequest;
 import com.mashangping.common.BizException;
 import com.mashangping.common.ErrorCode;
 import com.mashangping.course.CourseService;
+import com.mashangping.problem.CourseProblem;
+import com.mashangping.problem.CourseProblemMapper;
 import com.mashangping.problem.Problem;
 import com.mashangping.problem.ProblemMapper;
 import lombok.RequiredArgsConstructor;
@@ -14,8 +18,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -28,6 +34,7 @@ public class AssignmentService {
     private final AssignmentMapper assignmentMapper;
     private final AssignmentProblemMapper assignmentProblemMapper;
     private final ProblemMapper problemMapper;
+    private final CourseProblemMapper courseProblemMapper;
 
     public Assignment create(long teacherUid, long courseId, AssignmentUpsertRequest request) {
         courseService.getOwned(teacherUid, courseId);
@@ -127,6 +134,71 @@ public class AssignmentService {
         assignmentProblemMapper.delete(new LambdaQueryWrapper<AssignmentProblem>()
                 .eq(AssignmentProblem::getAssignmentId, assignmentId));
         assignmentMapper.deleteById(assignmentId);
+    }
+
+    /** 批量选入（原子）：先全量校验，任一非法全拒零写入。出题范围=本课程 course_problem */
+    @Transactional
+    public void addProblems(long teacherUid, long assignmentId, AssignmentProblemsRequest request) {
+        Assignment a = getOwned(teacherUid, assignmentId);
+        List<AssignmentProblemsRequest.Item> items = request.items();
+
+        Set<Long> scope = courseProblemMapper.selectList(new LambdaQueryWrapper<CourseProblem>()
+                        .eq(CourseProblem::getCourseId, a.getCourseId()))
+                .stream().map(CourseProblem::getProblemId).collect(Collectors.toSet());
+        Set<Long> seen = new HashSet<>();
+        for (AssignmentProblemsRequest.Item item : items) {
+            if (!scope.contains(item.problemId())) {
+                throw new BizException(ErrorCode.NOT_FOUND, "题目不在本课程选题范围内");
+            }
+            if (!seen.add(item.problemId())) {
+                throw new BizException(ErrorCode.PARAM_INVALID, "items 内存在重复题目");
+            }
+        }
+        Long existing = assignmentProblemMapper.selectCount(new LambdaQueryWrapper<AssignmentProblem>()
+                .eq(AssignmentProblem::getAssignmentId, assignmentId)
+                .in(AssignmentProblem::getProblemId, seen));
+        if (existing != null && existing > 0) {
+            throw new BizException(ErrorCode.PARAM_INVALID, "题目已在本作业中");
+        }
+        int next = nextSortOrder(assignmentId);
+        for (AssignmentProblemsRequest.Item item : items) {
+            AssignmentProblem ap = new AssignmentProblem();
+            ap.setAssignmentId(assignmentId);
+            ap.setProblemId(item.problemId());
+            ap.setScore(item.score());
+            ap.setSortOrder(next++);
+            assignmentProblemMapper.insert(ap);
+        }
+    }
+
+    public void updateScore(long teacherUid, long assignmentId, long problemId, AssignmentScoreRequest request) {
+        getOwned(teacherUid, assignmentId);
+        AssignmentProblem ap = requireInAssignment(assignmentId, problemId);
+        ap.setScore(request.score());
+        assignmentProblemMapper.updateById(ap);
+    }
+
+    /** 移出单题：只删关联不动题 */
+    public void removeProblem(long teacherUid, long assignmentId, long problemId) {
+        getOwned(teacherUid, assignmentId);
+        AssignmentProblem ap = requireInAssignment(assignmentId, problemId);
+        assignmentProblemMapper.deleteById(ap.getId());
+    }
+
+    private AssignmentProblem requireInAssignment(long assignmentId, long problemId) {
+        AssignmentProblem ap = assignmentProblemMapper.selectOne(new LambdaQueryWrapper<AssignmentProblem>()
+                .eq(AssignmentProblem::getAssignmentId, assignmentId)
+                .eq(AssignmentProblem::getProblemId, problemId));
+        if (ap == null) {
+            throw new BizException(ErrorCode.NOT_FOUND, "题目不在本作业中");
+        }
+        return ap;
+    }
+
+    private int nextSortOrder(long assignmentId) {
+        return assignmentProblemMapper.selectList(new LambdaQueryWrapper<AssignmentProblem>()
+                        .eq(AssignmentProblem::getAssignmentId, assignmentId))
+                .stream().mapToInt(AssignmentProblem::getSortOrder).max().orElse(0) + 1;
     }
 
     private void requireStartBeforeDue(LocalDateTime startAt, LocalDateTime dueAt) {

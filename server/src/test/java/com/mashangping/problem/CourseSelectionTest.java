@@ -13,6 +13,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 
+import java.time.LocalDateTime;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -214,6 +216,44 @@ class CourseSelectionTest extends IntegrationTestBase {
         mockMvc.perform(delete("/api/courses/" + courseIdA + "/problems/123")
                         .header("Authorization", teacherB()))
                 .andExpect(jsonPath("$.code").value(40400));
+    }
+
+    @Test
+    void course_selection_remove_blocked_while_assignment_references() throws Exception {
+        long p1 = createProblem(uidA, "被作业引用题", false);
+        mockMvc.perform(post("/api/courses/" + courseIdA + "/problems")
+                        .header("Authorization", teacherA())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"problemId\":" + p1 + "}"))
+                .andExpect(jsonPath("$.code").value(0));
+
+        // 本课程建作业并批量选入该题（作业域端点）
+        LocalDateTime start = LocalDateTime.now().plusDays(1);
+        LocalDateTime due = start.plusHours(2);
+        String body = mockMvc.perform(post("/api/courses/" + courseIdA + "/assignments")
+                        .header("Authorization", teacherA())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"引用作业\",\"startAt\":\"" + start
+                                + "\",\"dueAt\":\"" + due + "\"}"))
+                .andReturn().getResponse().getContentAsString(java.nio.charset.StandardCharsets.UTF_8);
+        long assignmentId = ((Number) com.jayway.jsonpath.JsonPath.read(body, "$.data.id")).longValue();
+        mockMvc.perform(post("/api/assignments/" + assignmentId + "/problems")
+                        .header("Authorization", teacherA())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"items\":[{\"problemId\":" + p1 + ",\"score\":10}]}"))
+                .andExpect(jsonPath("$.code").value(0));
+
+        // 被本课程作业引用 → 移出课程选题 40016
+        mockMvc.perform(delete("/api/courses/" + courseIdA + "/problems/" + p1)
+                        .header("Authorization", teacherA()))
+                .andExpect(jsonPath("$.code").value(40016));
+
+        // 从作业移除后 → 课程移出放行
+        mockMvc.perform(delete("/api/assignments/" + assignmentId + "/problems/" + p1)
+                        .header("Authorization", teacherA()))
+                .andExpect(jsonPath("$.code").value(0));
+        mockMvc.perform(delete("/api/courses/" + courseIdA + "/problems/" + p1)
+                        .header("Authorization", teacherA()))
+                .andExpect(jsonPath("$.code").value(0));
     }
 
     @Autowired private CourseProblemMapper courseProblemMapper;

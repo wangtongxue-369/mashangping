@@ -3,6 +3,10 @@ package com.mashangping.problem;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.mashangping.assignment.Assignment;
+import com.mashangping.assignment.AssignmentMapper;
+import com.mashangping.assignment.AssignmentProblem;
+import com.mashangping.assignment.AssignmentProblemMapper;
 import com.mashangping.common.BizException;
 import com.mashangping.common.ErrorCode;
 import com.mashangping.course.CourseService;
@@ -26,6 +30,8 @@ public class CourseSelectionService {
     private final CourseProblemMapper courseProblemMapper;
     private final ProblemMapper problemMapper;
     private final TestCaseMapper testCaseMapper;
+    private final AssignmentMapper assignmentMapper;
+    private final AssignmentProblemMapper assignmentProblemMapper;
 
     /** 选入：双重归属——先课程门再题门（只能选自己名下的题），重复选 40402 */
     public void select(long uid, long courseId, long problemId) {
@@ -96,9 +102,20 @@ public class CourseSelectionService {
         return result;
     }
 
-    /** 移出：只删关联不动题 */
+    /** 移出：先查被本课程作业引用 → 40016；未被引用才删关联 */
     public void remove(long uid, long courseId, long problemId) {
         courseService.getOwned(uid, courseId);
+        List<Long> assignmentIds = assignmentMapper.selectList(
+                        new LambdaQueryWrapper<Assignment>().eq(Assignment::getCourseId, courseId))
+                .stream().map(Assignment::getId).toList();
+        if (!assignmentIds.isEmpty()) {
+            Long refs = assignmentProblemMapper.selectCount(new LambdaQueryWrapper<AssignmentProblem>()
+                    .eq(AssignmentProblem::getProblemId, problemId)
+                    .in(AssignmentProblem::getAssignmentId, assignmentIds));
+            if (refs != null && refs > 0) {
+                throw new BizException(ErrorCode.PROBLEM_LOCKED_BY_ASSIGNMENT);
+            }
+        }
         courseProblemMapper.delete(new LambdaQueryWrapper<CourseProblem>()
                 .eq(CourseProblem::getCourseId, courseId)
                 .eq(CourseProblem::getProblemId, problemId));

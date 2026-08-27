@@ -1,6 +1,8 @@
 package com.mashangping.assignment;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.mashangping.assignment.dto.AssignmentProblemsRequest;
+import com.mashangping.assignment.dto.AssignmentScoreRequest;
 import com.mashangping.assignment.dto.AssignmentUpsertRequest;
 import com.mashangping.common.ApiResponse;
 import com.mashangping.common.PageUtils;
@@ -58,6 +60,31 @@ public class AssignmentController {
     public ApiResponse<Void> delete(@AuthenticationPrincipal TokenPayload me,
                                     @PathVariable long id) {
         assignmentService.delete(me.uid(), id);
+        return ApiResponse.ok();
+    }
+
+    @PostMapping("/assignments/{id}/problems")
+    public ApiResponse<Void> addProblems(@AuthenticationPrincipal TokenPayload me,
+                                         @PathVariable long id,
+                                         @Valid @RequestBody AssignmentProblemsRequest request) {
+        assignmentService.addProblems(me.uid(), id, request);
+        return ApiResponse.ok();
+    }
+
+    @PutMapping("/assignments/{id}/problems/{problemId}")
+    public ApiResponse<Void> updateScore(@AuthenticationPrincipal TokenPayload me,
+                                         @PathVariable long id,
+                                         @PathVariable long problemId,
+                                         @Valid @RequestBody AssignmentScoreRequest request) {
+        assignmentService.updateScore(me.uid(), id, problemId, request);
+        return ApiResponse.ok();
+    }
+
+    @DeleteMapping("/assignments/{id}/problems/{problemId}")
+    public ApiResponse<Void> removeProblem(@AuthenticationPrincipal TokenPayload me,
+                                           @PathVariable long id,
+                                           @PathVariable long problemId) {
+        assignmentService.removeProblem(me.uid(), id, problemId);
         return ApiResponse.ok();
     }
 }
