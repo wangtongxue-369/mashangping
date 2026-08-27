@@ -41,7 +41,8 @@ public class JudgeProperties {
             @Value("${msp.judge.mem-overhead-mb.default:64}") int memOverheadDefaultMb,
             @Value("${msp.judge.mem-overhead-mb.JAVA:192}") int memOverheadJavaMb,
             @Value("${msp.judge.images:"
-                    + "CC=msp-judge-cc,CPP=msp-judge-cc,JAVA=msp-judge-java,PYTHON=msp-judge-python}")
+                    + "C=msp-judge-cc,CC=msp-judge-cc,CPP=msp-judge-cc,"
+                    + "JAVA=msp-judge-java,PYTHON=msp-judge-python}")
             String imagesCsv) {
         this.enabled = enabled;
         this.concurrent = concurrent;

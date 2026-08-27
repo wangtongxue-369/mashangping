@@ -27,6 +27,8 @@ class SandboxJudgeIT extends IntegrationTestBase {
     private static ImageFromDockerfile javaImage;
     private static ImageFromDockerfile pythonImage;
     private static DockerJudgeExecutor executor;
+    /** 低输出上限档：专测 stdout 超限强制 WA 的截断路径 */
+    private static DockerJudgeExecutor smallOutputExecutor;
 
     static final String CC_DOCKERFILE = """
             FROM gcc:12
@@ -71,6 +73,7 @@ class SandboxJudgeIT extends IntegrationTestBase {
         DockerClient shared = DockerClientFactory.instance().client();
         JudgeProperties props = props();
         executor = new DockerJudgeExecutor(props, shared);
+        smallOutputExecutor = new DockerJudgeExecutor(smallCapProps(), shared);
         // 显式触发构建并覆盖镜像名映射到 IT 专用 tag
         ccImage.get();
         javaImage.get();
@@ -98,6 +101,14 @@ class SandboxJudgeIT extends IntegrationTestBase {
     private static JudgeProperties props() {
         return new JudgeProperties(true, 3, 1000L, 2, 60000, 800,
                 1048576, 65536, 10, 64, 64, 192,
+                "C=msp-judge-it-cc,CC=msp-judge-it-cc,CPP=msp-judge-it-cc,"
+                        + "JAVA=msp-judge-it-java,PYTHON=msp-judge-it-python");
+    }
+
+    /** 与 props() 全同，仅 outputMaxBytes 压到 1024：让输出必然触碰收集上限 */
+    private static JudgeProperties smallCapProps() {
+        return new JudgeProperties(true, 3, 1000L, 2, 60000, 800,
+                1024, 65536, 10, 64, 64, 192,
                 "C=msp-judge-it-cc,CC=msp-judge-it-cc,CPP=msp-judge-it-cc,"
                         + "JAVA=msp-judge-it-java,PYTHON=msp-judge-it-python");
     }
@@ -227,6 +238,27 @@ class SandboxJudgeIT extends IntegrationTestBase {
         executor.execute(work(JudgeLanguage.C, big.toString(), 2000, 16,
                 new String[][]{{"", ""}}), sink);
         assertThat(sink.points.get(0).status()).isEqualTo("MLE");
+    }
+
+    @Test
+    void stdout_overflow_forces_wa_even_when_content_would_match() {
+        // 程序输出 400 行 PADLINE-*（约 5.2KB），expected 为同一段全文——
+        // 若无收集上限，OutputComparator 本应判 AC；cap=1024 下 stdout 截断打标，
+        // 「超 outputMaxBytes 强制 WA」先于比对生效 ⇒ 此处 WA 只能由溢出路径产生，
+        // 与比对语义彻底解耦（非"碰巧输出不对"）。
+        StringBuilder expect = new StringBuilder();
+        StringBuilder code = new StringBuilder("#include <cstdio>\nint main(){");
+        for (int i = 0; i < 400; i++) {
+            String line = String.format("PADLINE-%04d\n", i);
+            expect.append(line);
+            code.append("printf(\"PADLINE-%04d\\n\",").append(i).append(");");
+        }
+        code.append("return 0;}");
+        CapturingSink sink = new CapturingSink();
+        smallOutputExecutor.execute(work(JudgeLanguage.CPP, code.toString(),
+                1000, 256, new String[][]{{"", expect.toString()}}), sink);
+        assertThat(sink.compileError).isNull();
+        assertThat(sink.points.get(0).status()).isEqualTo("WA");
     }
 
     @Test
