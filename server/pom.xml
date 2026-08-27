@@ -89,6 +89,18 @@
             <artifactId>lombok</artifactId>
             <optional>true</optional>
         </dependency>
+        <!-- 判题沙箱驱动：与 Boot/TC 同生态的官方客户端；3.4.2 与 Testcontainers 1.21.4
+             传递的 docker-java-api 3.4.2 对齐，避免同族双版本 -->
+        <dependency>
+            <groupId>com.github.docker-java</groupId>
+            <artifactId>docker-java-core</artifactId>
+            <version>3.4.2</version>
+        </dependency>
+        <dependency>
+            <groupId>com.github.docker-java</groupId>
+            <artifactId>docker-java-transport-httpclient5</artifactId>
+            <version>3.4.2</version>
+        </dependency>
 
         <!-- test -->
         <dependency>
