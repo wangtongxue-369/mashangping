@@ -50,4 +50,11 @@ public class CourseController {
         courseService.update(me.uid(), id, request);
         return ApiResponse.ok();
     }
+
+    @DeleteMapping("/{id}")
+    public ApiResponse<Void> delete(@AuthenticationPrincipal TokenPayload me,
+                                    @PathVariable long id) {
+        courseService.delete(me.uid(), id);
+        return ApiResponse.ok();
+    }
 }
