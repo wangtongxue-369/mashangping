@@ -20,7 +20,6 @@ import com.mashangping.user.UserMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.MediaType;
 
 import java.time.LocalDateTime;
 
@@ -41,7 +40,6 @@ class SubmissionReadTest extends IntegrationTestBase {
     @Autowired AssignmentMapper assignmentMapper;
     @Autowired AssignmentProblemMapper assignmentProblemMapper;
     @Autowired SubmissionMapper submissionMapper; @Autowired JudgeDetailMapper judgeDetailMapper;
-    @Autowired JudgeTaskMapper judgeTaskMapper;
 
     long stuUid; String bearer; Problem problem; AssignmentProblem ap; Assignment assignment; Course course;
 
@@ -50,6 +48,8 @@ class SubmissionReadTest extends IntegrationTestBase {
 
     private static final String SECRET_INPUT = "TOPSECRET-INPUT-9x7";
     private static final String SECRET_EXPECTED = "TOPSECRET-EXPECTED-3k1";
+    /** 样例点 message 透传标记串（专项用例自证可见，语义上无泄漏面） */
+    private static final String SAMPLE_MSG_VISIBLE = "SAMPLE-MSG-VISIBLE";
 
     @BeforeEach
     void seed() {
@@ -83,6 +83,14 @@ class SubmissionReadTest extends IntegrationTestBase {
      * 使"历史列表"语义成立；换学生则重建锚（归属隔离）。
      */
     private long seedJudgedAssignmentSubmission(long uid) {
+        return seedJudgedSubmission(uid, Submission.STATUS_WA, 0, 1,
+                "AC", null, "RE", "secret path /root/data/" + SECRET_INPUT);
+    }
+
+    /** 变体种子：提交终态与两点明细（样例/隐藏）可自定义；锚复用逻辑与基础版一致 */
+    private long seedJudgedSubmission(long uid, String subStatus, Integer score, int passed,
+                                      String sampleStatus, String sampleMsg,
+                                      String hiddenStatus, String hiddenMsg) {
         if (course == null || anchorOwnerUid != uid) {
             course = new Course();
             course.setName("课R" + System.nanoTime()); course.setTerm("2025-2026-1");
@@ -108,18 +116,17 @@ class SubmissionReadTest extends IntegrationTestBase {
         s.setProblemId(problem.getId()); s.setUserId(uid);
         s.setAssignmentId(assignment.getId()); s.setAssignmentProblemId(ap.getId());
         s.setLanguage("CPP"); s.setCode("int main(){return 0;}");
-        s.setStatus(Submission.STATUS_WA); s.setScore(0);
-        s.setPassedCount(1); s.setTotalCount(2);
+        s.setStatus(subStatus); s.setScore(score);
+        s.setPassedCount(passed); s.setTotalCount(2);
         s.setTimeUsedMs(12); s.setMemoryUsedMb(31);
         s.setIsLate(false); s.setSubmittedAt(LocalDateTime.now());
         submissionMapper.insert(s);
 
         var cases = testCaseMapper.selectList(new LambdaQueryWrapper<TestCase>()
                 .eq(TestCase::getProblemId, problem.getId()).orderByAsc(TestCase::getId));
-        insertDetail(s.getId(), 1, cases.get(0).getId(), "AC", 8L, 30L, null);
+        insertDetail(s.getId(), 1, cases.get(0).getId(), sampleStatus, 8L, 30L, sampleMsg);
         // 隐藏点的 RE message 携带 stderr 尾段——绝不能出现在学生视图
-        insertDetail(s.getId(), 2, cases.get(1).getId(), "RE", 3L, 29L,
-                "secret path /root/data/" + SECRET_INPUT);
+        insertDetail(s.getId(), 2, cases.get(1).getId(), hiddenStatus, 3L, 29L, hiddenMsg);
         return s.getId();
     }
 
@@ -209,6 +216,34 @@ class SubmissionReadTest extends IntegrationTestBase {
                 .andExpect(jsonPath("$.data.maskedPoints[0].memoryUsedMb").value(29))
                 .andExpect(jsonPath("$.data.maskedPoints[0].input").doesNotExist())
                 .andExpect(jsonPath("$.data.maskedPoints[0].expectedOutput").doesNotExist())
+                .andExpect(jsonPath("$.data.maskedPoints[0].message").doesNotExist());
+    }
+
+    /** 规格补齐（§9/§11）：样例点七字段含 message；隐藏点机密 message 仍零出现 */
+    @Test
+    void detail_sample_point_message_passes_through_without_hidden_leak() throws Exception {
+        long sid = seedJudgedSubmission(stuUid, Submission.STATUS_RE, 0, 0,
+                "RE", "SIGNAL=SEGV at main.c:3 " + SAMPLE_MSG_VISIBLE,
+                "RE", "hidden fault /root/data/" + SECRET_INPUT);
+        var body = mockMvc.perform(get("/api/submissions/" + sid)
+                        .header("Authorization", bearer)).andReturn()
+                .getResponse().getContentAsString(java.nio.charset.StandardCharsets.UTF_8);
+        // 双证其一：样例点 message 确实透传在
+        mockMvc.perform(get("/api/submissions/" + sid).header("Authorization", bearer))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.samples.length()").value(1))
+                .andExpect(jsonPath("$.data.samples[0].pointIndex").value(1))
+                .andExpect(jsonPath("$.data.samples[0].status").value("RE"))
+                .andExpect(jsonPath("$.data.samples[0].message")
+                        .value(org.hamcrest.Matchers.containsString(SAMPLE_MSG_VISIBLE)));
+        // 双证其二：整个响应体不含隐藏点机密串（且样例标记串在场）
+        assertThat(body).contains(SAMPLE_MSG_VISIBLE)
+                .doesNotContain(SECRET_INPUT).doesNotContain(SECRET_EXPECTED)
+                .doesNotContain("hidden fault");
+        // 隐藏点依旧四字段瘦视图，message 结构性缺席
+        mockMvc.perform(get("/api/submissions/" + sid).header("Authorization", bearer))
+                .andExpect(jsonPath("$.data.maskedPoints.length()").value(1))
+                .andExpect(jsonPath("$.data.maskedPoints[0].status").value("RE"))
                 .andExpect(jsonPath("$.data.maskedPoints[0].message").doesNotExist());
     }
 

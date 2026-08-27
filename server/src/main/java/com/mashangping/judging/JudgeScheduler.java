@@ -18,7 +18,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -345,13 +344,15 @@ public class JudgeScheduler implements JudgeDispatcher, ApplicationRunner {
                                Submission s, Throwable t) {
         int attempted = task.getRetryCount() == null ? 0 : task.getRetryCount();
         if (attempted < properties.getRetryMax()) {
-            taskMapper.requeueForRetry(task.getId());
+            // 先复位 submission 再回队：复位期间 task 仍持 RUNNING 租约，领不走，
+            // 闭死「新 worker 已 RUNNING 后旧 worker 打回 PENDING」交叠窗（重复终态写库）
             if (s != null) {
                 submissionMapper.update(null, new LambdaUpdateWrapper<Submission>()
                         .eq(Submission::getId, s.getId())
                         .eq(Submission::getStatus, Submission.STATUS_RUNNING)
                         .set(Submission::getStatus, Submission.STATUS_PENDING));
             }
+            taskMapper.requeueForRetry(task.getId());
             log.warn("judge task {} requeued ({}/{}): {}", task.getId(),
                     attempted + 1, properties.getRetryMax(), String.valueOf(t));
             return;

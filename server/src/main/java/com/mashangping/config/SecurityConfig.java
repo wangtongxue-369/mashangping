@@ -33,6 +33,9 @@ public class SecurityConfig {
                     .requestMatchers(HttpMethod.POST,
                             "/api/auth/login", "/api/auth/register/code", "/api/auth/register")
                     .permitAll()
+                    // WS 握手放行：浏览器原生 WebSocket API 无法自设 Authorization 头，
+                    // 鉴权唯一闸口是 CONNECT 帧的 JWT 绑定（WsAuthChannelInterceptor）
+                    .requestMatchers("/ws/judge").permitAll()
                     .requestMatchers("/api/admin-only-probe").hasRole("ADMIN")
                     .anyRequest().authenticated())
             .exceptionHandling(e -> e

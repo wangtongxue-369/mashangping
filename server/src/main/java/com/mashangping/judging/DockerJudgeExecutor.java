@@ -211,10 +211,11 @@ public class DockerJudgeExecutor implements JudgeExecutor {
     private void copySource(String cid, JudgeLanguage lang, String code) {
         String encoded = java.util.Base64.getEncoder()
                 .encodeToString(code.getBytes(StandardCharsets.UTF_8));
+        // 墙钟上限走 msp.judge.compile-timeout-ms：注源与编译同为客户端墙钟上限语义
         ExecResult r = execRun(cid,
                 new String[]{"sh", "-c",
                         "printf %s " + encoded + " | base64 -d > " + lang.sourceFileName()},
-                null, Duration.ofMillis(60_000L));
+                null, Duration.ofMillis(properties.getCompileTimeoutMs()));
         if (r.timedOut() || r.exitCode() == null || r.exitCode() != 0) {
             throw new IllegalStateException(
                     "source injection failed, timedOut=" + r.timedOut()

@@ -17,6 +17,7 @@ import org.springframework.messaging.support.MessageBuilder;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 
 class WsAuthInterceptorTest extends IntegrationTestBase {
 
@@ -77,5 +78,16 @@ class WsAuthInterceptorTest extends IntegrationTestBase {
         acc.setLeaveMutable(true);
         Message<byte[]> m = MessageBuilder.createMessage(new byte[0], acc.getMessageHeaders());
         assertThat(interceptor.preSend(m, mockChannel())).isSameAs(m);
+    }
+
+    /**
+     * 握手不再被 HTTP 认证层拦死（浏览器原生 WS 无法自设 Authorization 头）：
+     * 非 401 即契约成立——未升级的普通 GET 由端点侧以 400 等方式拒绝，与认证无关。
+     */
+    @Test
+    void ws_handshake_not_blocked_by_http_auth_layer() throws Exception {
+        mockMvc.perform(get("/ws/judge"))
+                .andExpect(result -> assertThat(result.getResponse().getStatus())
+                        .isNotEqualTo(401));
     }
 }

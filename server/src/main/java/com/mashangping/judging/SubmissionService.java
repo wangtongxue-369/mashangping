@@ -91,8 +91,8 @@ public class SubmissionService {
         task.setRetryCount(0);
         judgeTaskMapper.insert(task);
 
-        // ⑦ 事务外唤醒（此处仍在事务内但 dispatchAsync 是异步线程读取，
-        //    调度器领取受 status='PENDING' 原子 UPDATE 保护；最坏情况本轮抢不到由定时器兜底）
+        // ⑦ 事务内触发 dispatchAsync：此刻事务未提交，调度线程跨连接不可见本行本轮抢不到；
+        //    领取以 status='PENDING' 原子 UPDATE 保证并发安全，唤醒缺漏由定时器兜底
         JudgeDispatcher dispatcher = dispatcherProvider.getIfAvailable();
         if (dispatcher != null) {
             dispatcher.dispatchAsync();

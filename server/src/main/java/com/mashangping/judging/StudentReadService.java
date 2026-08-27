@@ -89,7 +89,7 @@ public class StudentReadService {
                     return new StudentSubmissionViews.SamplePoint(
                             d.getPointIndex(), d.getStatus(),
                             d.getTimeUsedMs(), d.getMemoryUsedMb(),
-                            tc.getInput(), tc.getExpectedOutput());
+                            tc.getInput(), tc.getExpectedOutput(), d.getMessage());
                 }).toList();
 
         List<StudentSubmissionViews.MaskedPoint> masked = details.stream()
