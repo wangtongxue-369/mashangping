@@ -51,3 +51,33 @@ export interface ImportResult {
   skipped: number;
   failures: ImportRowFailure[];
 }
+
+/**
+ * 题目列表出参视图（ProblemController.list 出参 record，不含 MD 正文）。
+ * languages 为语言键（C/CPP/JAVA/PYTHON），null 存储值已由后端解析为全支持全集。
+ */
+export interface ProblemSummaryView {
+  id: number;
+  title: string;
+  languages: string[];
+  timeLimitMs: number;
+  memoryLimitMb: number;
+  isPublic: boolean;
+  createdAt: string;
+}
+
+/** 测试点出参视图（属主视角，含隐藏点）。 */
+export interface TestCaseView {
+  id: number;
+  input: string;
+  expectedOutput: string;
+  isSample: boolean;
+}
+
+/** 题目详情出参视图（属主视角）：MD 原文 + 全部测试点（含隐藏点）。 */
+export interface ProblemDetailView extends Omit<ProblemSummaryView, 'createdAt'> {
+  description: string;
+  testCases: TestCaseView[];
+  createdAt: string;
+  updatedAt: string;
+}

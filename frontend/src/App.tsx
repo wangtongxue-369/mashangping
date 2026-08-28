@@ -6,11 +6,8 @@ const LoginPage = lazy(() => import('./pages/LoginPage'));
 const TeacherLayout = lazy(() => import('./layout/TeacherLayout'));
 const CoursesPage = lazy(() => import('./pages/teacher/CoursesPage'));
 const CourseStudentsPage = lazy(() => import('./pages/teacher/CourseStudentsPage'));
-
-/** 占位页：后续任务接入题库真实页面。 */
-function Placeholder({ title }: { title: string }) {
-  return <div style={{ background: '#fff', padding: 24 }}>{title}（Task 4+ 页面接入）</div>;
-}
+const ProblemsPage = lazy(() => import('./pages/teacher/ProblemsPage'));
+const ProblemDetailPage = lazy(() => import('./pages/teacher/ProblemDetailPage'));
 
 const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -25,7 +22,8 @@ const router = createBrowserRouter([
       { index: true, element: <Navigate to="/teacher/courses" replace /> },
       { path: 'courses', element: <CoursesPage /> },
       { path: 'courses/:courseId/students', element: <CourseStudentsPage /> },
-      { path: 'problems', element: <Placeholder title="题库管理" /> },
+      { path: 'problems', element: <ProblemsPage /> },
+      { path: 'problems/:problemId', element: <ProblemDetailPage /> },
     ],
   },
   { path: '*', element: <Navigate to="/login" replace /> },

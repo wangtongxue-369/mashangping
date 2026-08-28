@@ -16,10 +16,12 @@ export default function TeacherLayout() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // 课程子页（学生名单等）也保持「课程」菜单高亮。
+  // 子页（学生名单/题目详情）也保持所属菜单高亮。
   const selectedKey = location.pathname.startsWith('/teacher/courses')
     ? '/teacher/courses'
-    : location.pathname;
+    : location.pathname.startsWith('/teacher/problems')
+      ? '/teacher/problems'
+      : location.pathname;
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
