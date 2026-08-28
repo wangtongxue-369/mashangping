@@ -220,6 +220,7 @@ export default function CourseStudentsPage() {
         title="单个添加学生"
         open={addOpen}
         onCancel={() => setAddOpen(false)}
+        onOk={() => form.submit()}
         confirmLoading={saving}
         okText="添加"
         destroyOnHidden

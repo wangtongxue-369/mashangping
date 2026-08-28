@@ -136,6 +136,7 @@ export default function CoursesPage() {
         title={editing ? '编辑课程' : '新建课程'}
         open={modalOpen}
         onCancel={() => setModalOpen(false)}
+        onOk={() => form.submit()}
         confirmLoading={saving}
         okText={editing ? '保存' : '创建'}
         destroyOnHidden
