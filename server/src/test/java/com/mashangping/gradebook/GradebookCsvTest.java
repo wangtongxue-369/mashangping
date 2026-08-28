@@ -44,6 +44,7 @@ class GradebookCsvTest extends IntegrationTestBase {
         teacherUid = ensureUser("gb_t_c1", User.ROLE_TEACHER, null, "甲老师");
         Course c = new Course();
         c.setName("CSV课"); c.setTerm("2025-2026-1"); c.setTeacherId(teacherUid);
+        c.setDescription("成绩册CSV导出测试专用课程");
         courseMapper.insert(c);
         // 学生N：正常，有 AC 提交
         long uidN = ensureUser("gb_st_c1", User.ROLE_STUDENT, "S_N", "张三");
@@ -53,6 +54,7 @@ class GradebookCsvTest extends IntegrationTestBase {
         enroll(c.getId(), uidM, "S_M", "=SUM(A1),陷阱\"");
         Problem p1 = new Problem();
         p1.setTeacherId(teacherUid); p1.setTitle("题A");
+        p1.setDescription("成绩册CSV导出测试题目A");
         p1.setTimeLimitMs(1000); p1.setMemoryLimitMb(256);
         problemMapper.insert(p1);
         Assignment a = new Assignment();

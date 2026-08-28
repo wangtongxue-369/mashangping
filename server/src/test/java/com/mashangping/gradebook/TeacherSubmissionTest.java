@@ -67,11 +67,12 @@ class TeacherSubmissionTest extends IntegrationTestBase {
         otherUid = ensureUser("gb_t_b2", User.ROLE_TEACHER, null, "乙老师");
         Course c = new Course();
         c.setName("历史课"); c.setTerm("2025-2026-1"); c.setTeacherId(teacherUid);
+        c.setDescription("教师提交历史测试专用课程");
         courseMapper.insert(c);
-        uidA = ensureUser("gb_st_a2", User.ROLE_STUDENT, "S001", "学生A");
-        uidB = ensureUser("gb_st_b2", User.ROLE_STUDENT, "S002", "学生B");
-        enroll(c.getId(), uidA, "S001", "学生A");
-        enroll(c.getId(), uidB, "S002", "学生B");
+        uidA = ensureUser("gb_st_a2", User.ROLE_STUDENT, "GBT001", "学生A");
+        uidB = ensureUser("gb_st_b2", User.ROLE_STUDENT, "GBT002", "学生B");
+        enroll(c.getId(), uidA, "GBT001", "学生A");
+        enroll(c.getId(), uidB, "GBT002", "学生B");
 
         Problem p1 = problem("题1");
         Problem p2 = problem("题2");
@@ -127,7 +128,7 @@ class TeacherSubmissionTest extends IntegrationTestBase {
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> recordsA = (List<Map<String, Object>>) ((Map<String, Object>) root.get("data")).get("records");
         assertThat(recordsA).hasSize(2);
-        assertThat(recordsA).allSatisfy(r -> assertThat(r.get("studentNo")).isEqualTo("S001"));
+        assertThat(recordsA).allSatisfy(r -> assertThat(r.get("studentNo")).isEqualTo("GBT001"));
     }
 
     @Test
@@ -218,6 +219,7 @@ class TeacherSubmissionTest extends IntegrationTestBase {
         Problem p = new Problem();
         p.setTeacherId(teacherUid);
         p.setTitle(title);
+        p.setDescription("教师提交历史测试题目：" + title);
         p.setTimeLimitMs(1000);
         p.setMemoryLimitMb(256);
         problemMapper.insert(p);

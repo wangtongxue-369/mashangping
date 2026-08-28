@@ -61,13 +61,14 @@ class GradebookAggregationTest extends IntegrationTestBase {
         c.setName("成绩课");
         c.setTerm("2025-2026-1");
         c.setTeacherId(teacherUid);
+        c.setDescription("成绩册聚合测试专用课程");
         courseMapper.insert(c);
-        uidA = ensureUser("gb_st_a", User.ROLE_STUDENT, "S001", "学生A");
-        uidB = ensureUser("gb_st_b", User.ROLE_STUDENT, "S002", "学生B");
-        uidC = ensureUser("gb_st_c", User.ROLE_STUDENT, "S003", "学生C");
-        enroll(c.getId(), uidA, "S001", "学生A");
-        enroll(c.getId(), uidB, "S002", "学生B");
-        enroll(c.getId(), uidC, "S003", "学生C");
+        uidA = ensureUser("gb_st_a", User.ROLE_STUDENT, "GBA001", "学生A");
+        uidB = ensureUser("gb_st_b", User.ROLE_STUDENT, "GBA002", "学生B");
+        uidC = ensureUser("gb_st_c", User.ROLE_STUDENT, "GBA003", "学生C");
+        enroll(c.getId(), uidA, "GBA001", "学生A");
+        enroll(c.getId(), uidB, "GBA002", "学生B");
+        enroll(c.getId(), uidC, "GBA003", "学生C");
 
         Problem p1 = problem("题1");
         Problem p2 = problem("题2");
@@ -106,7 +107,7 @@ class GradebookAggregationTest extends IntegrationTestBase {
         assertThat(students).extracting(s -> ((Number) s.get("studentId")).longValue())
                 .containsExactlyInAnyOrder(uidA, uidB, uidC);
         assertThat(students).anySatisfy(s -> {
-            assertThat(s.get("studentNo")).isEqualTo("S001");
+            assertThat(s.get("studentNo")).isEqualTo("GBA001");
             assertThat(s.get("realName")).isEqualTo("学生A");
         });
 
@@ -194,6 +195,7 @@ class GradebookAggregationTest extends IntegrationTestBase {
         Problem p = new Problem();
         p.setTeacherId(teacherUid);
         p.setTitle(title);
+        p.setDescription("成绩册聚合测试题目：" + title);
         p.setTimeLimitMs(1000);
         p.setMemoryLimitMb(256);
         problemMapper.insert(p);
