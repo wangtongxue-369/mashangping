@@ -26,16 +26,22 @@ function totalOf(view: GradebookView, studentId: number): number {
   return view.totals.find((t) => t.studentId === studentId)?.total ?? 0;
 }
 
-/** blob 错误体里若是后端 JSON 信封则取业务 message，否则走 axios/兜底文案，不静默。 */
+/** 解析 JSON 错误体 Blob 里的业务 message；非 JSON 或无 message 走兜底文案。 */
+async function messageFromJsonBlob(blob: Blob, fallback: string): Promise<string> {
+  try {
+    const parsed = JSON.parse(await blob.text()) as { message?: unknown };
+    if (typeof parsed.message === 'string' && parsed.message) return parsed.message;
+  } catch {
+    // 非 JSON 错误体，走兜底
+  }
+  return fallback;
+}
+
+/** axios 错误体若是后端 JSON Blob 则取业务 message，否则走 axios/兜底文案，不静默。 */
 async function apiMessageFromBlob(err: unknown, fallback: string): Promise<string> {
   const data = (err as { response?: { data?: unknown } })?.response?.data;
   if (data instanceof Blob && data.type.includes('json')) {
-    try {
-      const parsed = JSON.parse(await data.text()) as { message?: unknown };
-      if (typeof parsed.message === 'string' && parsed.message) return parsed.message;
-    } catch {
-      // 非 JSON 错误体，走兜底
-    }
+    return messageFromJsonBlob(data, fallback);
   }
   return extractApiMessage(err, fallback);
 }
@@ -70,7 +76,14 @@ export default function GradebookPage() {
       const resp = await client.get(`/assignments/${assignmentId}/gradebook/csv`, {
         responseType: 'blob',
       });
-      const url = URL.createObjectURL(resp.data as Blob);
+      // 业务错误是 HTTP200+JSON 信封（BizException 一律 200），responseType blob 时
+      // 拦截器拿不到 code 放行——错误 JSON 会伪装成 CSV，须在此识别拦截，不触发下载。
+      const body = resp.data as unknown;
+      if (body instanceof Blob && body.type.includes('json')) {
+        message.error(await messageFromJsonBlob(body, '成绩册导出失败，请重试'));
+        return;
+      }
+      const url = URL.createObjectURL(body as Blob);
       const a = document.createElement('a');
       a.href = url;
       a.download = `gradebook-${assignmentId}.csv`;

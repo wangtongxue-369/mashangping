@@ -194,7 +194,8 @@ public class GradebookService {
             }
             sb.append(',').append(totals.getOrDefault(stu.studentId(), 0)).append('\n');
         }
-        return ("﻿" + sb).getBytes(StandardCharsets.UTF_8);
+        // BOM 用转义写法，避免不可见字面量被编辑器清理；字节输出不变。
+        return ("\uFEFF" + sb).getBytes(StandardCharsets.UTF_8);
     }
 
     private String escape(String field) {
@@ -208,7 +209,7 @@ public class GradebookService {
                 s = "'" + s;
             }
         }
-        if (s.contains(",") || s.contains("\"") || s.contains("\n")) {
+        if (s.contains(",") || s.contains("\"") || s.contains("\n") || s.contains("\r")) {
             s = "\"" + s.replace("\"", "\"\"") + "\"";
         }
         return s;

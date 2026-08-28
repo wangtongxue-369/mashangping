@@ -151,4 +151,31 @@ describe('GradebookPage', () => {
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:mock-url');
     expect(await screen.findByText('成绩册 CSV 已导出')).toBeTruthy();
   });
+
+  it('CSV 业务错误（HTTP200+JSON 信封伪装成 blob）不触发下载并提示业务文案', async () => {
+    // 后端对 BizException 一律 200：responseType blob 时错误 JSON 会伪装成 CSV 响应，
+    // 页面必须识别 json 类型错误体、提示业务 message，且不得触发下载。
+    const createObjectURL = vi.fn(() => 'blob:mock-url');
+    URL.createObjectURL = createObjectURL;
+    const anchorClick = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+
+    const errText = JSON.stringify({ code: 40400, message: '作业不存在' });
+    const errBlob = new Blob([errText], { type: 'application/json' });
+    // jsdom 的 Blob 未实现 text()——按已知内容补上，组件侧 JSON 解析仍走真实实现。
+    if (!errBlob.text) {
+      Object.defineProperty(errBlob, 'text', { value: () => Promise.resolve(errText) });
+    }
+    mocks.get.mockImplementation((url: string) => {
+      if (url === '/assignments/5/gradebook') return ok(VIEW);
+      if (url === '/assignments/5/gradebook/csv') return Promise.resolve({ data: errBlob });
+      return Promise.reject(new Error(`unexpected GET ${url}`));
+    });
+    renderGradebook();
+    fireEvent.click(await screen.findByRole('button', { name: /导出 CSV/ }));
+
+    expect(await screen.findByText('作业不存在')).toBeTruthy();
+    expect(createObjectURL).not.toHaveBeenCalled();
+    expect(anchorClick).not.toHaveBeenCalled();
+    expect(screen.queryByText('成绩册 CSV 已导出')).toBeNull();
+  });
 });

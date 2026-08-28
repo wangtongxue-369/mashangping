@@ -151,15 +151,17 @@ export default function AssignmentsPage() {
       const detail = await client
         .get<ApiResponse<AssignmentTeacherDetail>>(`/assignments/${item.id}`)
         .then((r) => r.data.data);
+      // 目标值以刚拉取的详情为准：列表行 isPublished 可能已陈旧（他人/其他端已切换）。
+      const nextPublished = !detail.isPublished;
       await client.put(`/assignments/${item.id}`, {
         title: detail.title,
         description: detail.description,
         startAt: detail.startAt,
         dueAt: detail.dueAt,
         lateDays: detail.lateDays,
-        isPublished: !item.isPublished,
+        isPublished: nextPublished,
       });
-      message.success(item.isPublished ? '作业已下线' : '作业已发布');
+      message.success(nextPublished ? '作业已发布' : '作业已下线');
       invalidateAssignments();
     } catch (err) {
       message.error(extractApiMessage(err, '发布状态更新失败，请重试'));
