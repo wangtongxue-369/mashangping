@@ -8,6 +8,8 @@ const CoursesPage = lazy(() => import('./pages/teacher/CoursesPage'));
 const CourseStudentsPage = lazy(() => import('./pages/teacher/CourseStudentsPage'));
 const AssignmentsPage = lazy(() => import('./pages/teacher/AssignmentsPage'));
 const AssignmentDetailPage = lazy(() => import('./pages/teacher/AssignmentDetailPage'));
+const SubmissionsPage = lazy(() => import('./pages/teacher/SubmissionsPage'));
+const GradebookPage = lazy(() => import('./pages/teacher/GradebookPage'));
 const ProblemsPage = lazy(() => import('./pages/teacher/ProblemsPage'));
 const ProblemDetailPage = lazy(() => import('./pages/teacher/ProblemDetailPage'));
 
@@ -26,6 +28,8 @@ const router = createBrowserRouter([
       { path: 'courses/:courseId/students', element: <CourseStudentsPage /> },
       { path: 'courses/:courseId/assignments', element: <AssignmentsPage /> },
       { path: 'assignments/:assignmentId', element: <AssignmentDetailPage /> },
+      { path: 'assignments/:assignmentId/submissions', element: <SubmissionsPage /> },
+      { path: 'assignments/:assignmentId/gradebook', element: <GradebookPage /> },
       { path: 'problems', element: <ProblemsPage /> },
       { path: 'problems/:problemId', element: <ProblemDetailPage /> },
     ],
