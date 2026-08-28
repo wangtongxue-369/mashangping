@@ -46,7 +46,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('msp_user', JSON.stringify(u));
     setToken(t);
     setUser(u);
-    window.dispatchEvent(new Event(TOKEN_STORAGE_KEY + '_change'));
   }, []);
 
   const logout = useCallback(() => {
@@ -54,7 +53,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('msp_user');
     setToken(null);
     setUser(null);
-    window.dispatchEvent(new Event(TOKEN_STORAGE_KEY + '_change'));
     window.location.href = '/login';
   }, []);
 

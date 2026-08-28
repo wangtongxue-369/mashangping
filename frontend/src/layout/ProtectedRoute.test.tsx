@@ -1,25 +1,41 @@
 import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import ProtectedRoute from './ProtectedRoute';
 import { AuthProvider } from '../auth/useAuth';
 
-function Harness() {
-  return (
+function renderGated() {
+  return render(
     <AuthProvider>
       <MemoryRouter initialEntries={['/teacher/courses']}>
-        <ProtectedRoute>
-          <div>已登录内容</div>
-        </ProtectedRoute>
+        <Routes>
+          <Route path="/login" element={<div>登录页</div>} />
+          <Route
+            path="/teacher/courses"
+            element={
+              <ProtectedRoute>
+                <div>教师课程页</div>
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
       </MemoryRouter>
-    </AuthProvider>
+    </AuthProvider>,
   );
 }
 
 describe('ProtectedRoute', () => {
-  it('无 token 时重定向到 /login', () => {
+  it('无 token 时重定向到 /login（受保护内容不渲染）', async () => {
     localStorage.clear();
-    render(<Harness />);
-    expect(screen.queryByText('已登录内容')).toBeNull();
+    renderGated();
+    expect(await screen.findByText('登录页')).toBeTruthy();
+    expect(screen.queryByText('教师课程页')).toBeNull();
+  });
+
+  it('有 token 时渲染受保护内容（不跳 /login）', async () => {
+    localStorage.setItem('msp_token', 'test-token');
+    renderGated();
+    expect(await screen.findByText('教师课程页')).toBeTruthy();
+    expect(screen.queryByText('登录页')).toBeNull();
   });
 });

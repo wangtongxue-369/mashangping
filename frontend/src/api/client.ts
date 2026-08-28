@@ -23,9 +23,16 @@ client.interceptors.response.use(
     return resp;
   },
   (err) => {
-    if (err.response?.status === 401) {
+    const status = err.response?.status;
+    // 401：清 token 并（非 /login 时）重定向，避免登录页上的 401 引起整页跳转环。
+    if (status === 401) {
       localStorage.removeItem(TOKEN_KEY);
-      window.location.href = '/login';
+      if (!window.location.pathname.startsWith('/login')) {
+        window.location.href = '/login';
+      }
+    } else if (status !== undefined && status >= 500) {
+      // 5xx：转成业务风格错误，让调用方呈现友好提示，而非 axios 的“Request failed”。
+      return Promise.reject({ code: status, message: '服务暂不可用，请稍后重试', data: null });
     }
     return Promise.reject(err);
   },
