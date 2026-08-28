@@ -102,6 +102,11 @@ export default function CoursesPage() {
       key: 'action',
       render: (_, course) => (
         <Space>
+          <Link to={`/teacher/courses/${course.id}/assignments`}>
+            <Button size="small" type="text">
+              作业
+            </Button>
+          </Link>
           <Button size="small" type="text" onClick={() => openEdit(course)}>
             编辑
           </Button>

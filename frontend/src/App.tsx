@@ -6,6 +6,8 @@ const LoginPage = lazy(() => import('./pages/LoginPage'));
 const TeacherLayout = lazy(() => import('./layout/TeacherLayout'));
 const CoursesPage = lazy(() => import('./pages/teacher/CoursesPage'));
 const CourseStudentsPage = lazy(() => import('./pages/teacher/CourseStudentsPage'));
+const AssignmentsPage = lazy(() => import('./pages/teacher/AssignmentsPage'));
+const AssignmentDetailPage = lazy(() => import('./pages/teacher/AssignmentDetailPage'));
 const ProblemsPage = lazy(() => import('./pages/teacher/ProblemsPage'));
 const ProblemDetailPage = lazy(() => import('./pages/teacher/ProblemDetailPage'));
 
@@ -22,6 +24,8 @@ const router = createBrowserRouter([
       { index: true, element: <Navigate to="/teacher/courses" replace /> },
       { path: 'courses', element: <CoursesPage /> },
       { path: 'courses/:courseId/students', element: <CourseStudentsPage /> },
+      { path: 'courses/:courseId/assignments', element: <AssignmentsPage /> },
+      { path: 'assignments/:assignmentId', element: <AssignmentDetailPage /> },
       { path: 'problems', element: <ProblemsPage /> },
       { path: 'problems/:problemId', element: <ProblemDetailPage /> },
     ],

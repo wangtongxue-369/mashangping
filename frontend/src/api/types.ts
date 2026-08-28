@@ -81,3 +81,53 @@ export interface ProblemDetailView extends Omit<ProblemSummaryView, 'createdAt'>
   createdAt: string;
   updatedAt: string;
 }
+
+/**
+ * 教师作业列表行（AssignmentViews.TeacherListItem）。
+ * 不含 courseId/description——编辑/发布开关前须先拉详情；status 为后端实时推算。
+ */
+export interface AssignmentTeacherItem {
+  id: number;
+  title: string;
+  startAt: string;
+  dueAt: string;
+  lateDays: number;
+  isPublished: boolean;
+  problemCount: number;
+  totalScore: number;
+  status: string;
+}
+
+/** 已选题目行（AssignmentViews.TeacherDetail.ProblemItem，按 sortOrder 升序给出）。 */
+export interface AssignmentProblemItem {
+  problemId: number;
+  title: string;
+  score: number;
+  sortOrder: number;
+}
+
+/** 教师作业详情（AssignmentViews.TeacherDetail）：全字段 + 已选题目清单。 */
+export interface AssignmentTeacherDetail {
+  id: number;
+  courseId: number;
+  title: string;
+  description: string | null;
+  startAt: string;
+  dueAt: string;
+  lateDays: number;
+  isPublished: boolean;
+  status: string;
+  problems: AssignmentProblemItem[];
+}
+
+/** 课程选题列表行（CourseProblemView）：addProblems 的合法选题范围。 */
+export interface CourseProblemView {
+  problemId: number;
+  title: string;
+  languages: string[];
+  timeLimitMs: number;
+  memoryLimitMb: number;
+  isPublic: boolean;
+  testCaseCount: number;
+  sortOrder: number;
+}
