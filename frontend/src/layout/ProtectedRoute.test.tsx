@@ -7,7 +7,10 @@ import { AuthProvider } from '../auth/useAuth';
 function renderGated() {
   return render(
     <AuthProvider>
-      <MemoryRouter initialEntries={['/teacher/courses']}>
+      <MemoryRouter
+        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+        initialEntries={['/teacher/courses']}
+      >
         <Routes>
           <Route path="/login" element={<div>登录页</div>} />
           <Route

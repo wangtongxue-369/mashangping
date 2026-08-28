@@ -16,6 +16,11 @@ export default function TeacherLayout() {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // 课程子页（学生名单等）也保持「课程」菜单高亮。
+  const selectedKey = location.pathname.startsWith('/teacher/courses')
+    ? '/teacher/courses'
+    : location.pathname;
+
   return (
     <Layout style={{ minHeight: '100vh' }}>
       <Sider collapsible theme="dark" width={200}>
@@ -25,7 +30,7 @@ export default function TeacherLayout() {
         <Menu
           theme="dark"
           mode="inline"
-          selectedKeys={[location.pathname]}
+          selectedKeys={[selectedKey]}
           items={MENU_ITEMS}
           onClick={({ key }) => navigate(key)}
         />

@@ -7,6 +7,15 @@ export const TOKEN_STORAGE_KEY = TOKEN_KEY;
 
 export const client = axios.create({ baseURL: '/api' });
 
+/** 从拦截器/axios 错误中取业务提示文案：业务错误 reject 出的是 {code,message} body，其余兜底。 */
+export function extractApiMessage(err: unknown, fallback: string): string {
+  if (err && typeof err === 'object' && 'message' in err) {
+    const m = (err as { message?: unknown }).message;
+    if (typeof m === 'string' && m) return m;
+  }
+  return fallback;
+}
+
 client.interceptors.request.use((cfg) => {
   const t = localStorage.getItem(TOKEN_KEY);
   if (t) cfg.headers.Authorization = `Bearer ${t}`;

@@ -4,10 +4,12 @@ import ProtectedRoute from './layout/ProtectedRoute';
 
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const TeacherLayout = lazy(() => import('./layout/TeacherLayout'));
+const CoursesPage = lazy(() => import('./pages/teacher/CoursesPage'));
+const CourseStudentsPage = lazy(() => import('./pages/teacher/CourseStudentsPage'));
 
-/** 占位页：后续任务接入课程/题库真实页面。 */
+/** 占位页：后续任务接入题库真实页面。 */
 function Placeholder({ title }: { title: string }) {
-  return <div style={{ background: '#fff', padding: 24 }}>{title}（Task 3+ 页面接入）</div>;
+  return <div style={{ background: '#fff', padding: 24 }}>{title}（Task 4+ 页面接入）</div>;
 }
 
 const router = createBrowserRouter([
@@ -21,7 +23,8 @@ const router = createBrowserRouter([
     ),
     children: [
       { index: true, element: <Navigate to="/teacher/courses" replace /> },
-      { path: 'courses', element: <Placeholder title="课程管理" /> },
+      { path: 'courses', element: <CoursesPage /> },
+      { path: 'courses/:courseId/students', element: <CourseStudentsPage /> },
       { path: 'problems', element: <Placeholder title="题库管理" /> },
     ],
   },
