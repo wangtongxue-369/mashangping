@@ -112,7 +112,7 @@ class GradebookCsvTest extends IntegrationTestBase {
         // 学生N：AC→10，总分 10
         assertThat(csv).contains("张三,10,10");
         // 学生M：注入前缀 '、含逗号/引号走 RFC4180 引号包裹，未做→0
-        assertThat(csv).contains("\"'=SUM(A1),陷阱\"\'\"");
+        assertThat(csv).contains("\"'=SUM(A1),陷阱\"\"\"");
         assertThat(csv).contains("S_M");
         // total 0，单题未做 → 0
     }

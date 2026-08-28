@@ -141,14 +141,14 @@ public class GradebookService {
                 .eq(JudgeDetail::getSubmissionId, submissionId)
                 .orderByAsc(JudgeDetail::getPointIndex));
         List<Long> caseIds = details.stream().map(JudgeDetail::getTestCaseId).toList();
-        Map<Long, Boolean> sampleFlags = caseIds.isEmpty() ? Map.of()
+        Map<Long, TestCase> caseById = caseIds.isEmpty() ? Map.of()
                 : testCaseMapper.selectBatchIds(caseIds).stream()
-                        .collect(Collectors.toMap(TestCase::getId,
-                                tc -> Boolean.TRUE.equals(tc.getIsSample())));
+                        .collect(Collectors.toMap(TestCase::getId, Function.identity()));
         List<TeacherSubmissionRow.SamplePoint> samples = details.stream()
-                .filter(d -> sampleFlags.getOrDefault(d.getTestCaseId(), false))
+                .filter(d -> caseById.containsKey(d.getTestCaseId())
+                        && Boolean.TRUE.equals(caseById.get(d.getTestCaseId()).getIsSample()))
                 .map(d -> {
-                    TestCase tc = testCaseMapper.selectById(d.getTestCaseId());
+                    TestCase tc = caseById.get(d.getTestCaseId());
                     return new TeacherSubmissionRow.SamplePoint(
                             d.getPointIndex(), d.getStatus(),
                             d.getTimeUsedMs(), d.getMemoryUsedMb(),
@@ -158,7 +158,8 @@ public class GradebookService {
                 })
                 .toList();
         List<TeacherSubmissionRow.MaskedPoint> masked = details.stream()
-                .filter(d -> !sampleFlags.getOrDefault(d.getTestCaseId(), false))
+                .filter(d -> !caseById.containsKey(d.getTestCaseId())
+                        || !Boolean.TRUE.equals(caseById.get(d.getTestCaseId()).getIsSample()))
                 .map(d -> new TeacherSubmissionRow.MaskedPoint(
                         d.getPointIndex(), d.getStatus(),
                         d.getTimeUsedMs(), d.getMemoryUsedMb()))

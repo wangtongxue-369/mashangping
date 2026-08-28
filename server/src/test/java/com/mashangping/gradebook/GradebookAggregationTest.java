@@ -97,7 +97,7 @@ class GradebookAggregationTest extends IntegrationTestBase {
         assertThat(root.get("code")).isEqualTo(0);
         @SuppressWarnings("unchecked")
         Map<String, Object> data = (Map<String, Object>) root.get("data");
-        assertThat(data.get("assignmentId")).isEqualTo(assignmentId);
+        assertThat(((Number) data.get("assignmentId")).longValue()).isEqualTo(assignmentId);
         assertThat(data.get("assignmentTitle")).isEqualTo("作一");
 
         @SuppressWarnings("unchecked")
