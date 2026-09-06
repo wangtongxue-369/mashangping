@@ -39,10 +39,12 @@ public class CourseService {
     }
 
     public Page<CourseView> listMine(long teacherUid, int page, int size, String keyword) {
+        // keyword 可为 null：先判空归一，避免 .like 实参求值时 null.trim() 空指针
+        boolean hasKw = keyword != null && !keyword.isBlank();
+        String kw = hasKw ? LikeUtils.escapeForLike(keyword.trim()) : null;
         LambdaQueryWrapper<Course> wrapper = new LambdaQueryWrapper<Course>()
                 .eq(Course::getTeacherId, teacherUid)
-                .like(keyword != null && !keyword.isBlank(), Course::getName,
-                        LikeUtils.escapeForLike(keyword.trim()))
+                .like(hasKw, Course::getName, kw)
                 .orderByDesc(Course::getId);
         Page<Course> result = courseMapper.selectPage(new Page<>(page, size), wrapper);
         return (Page<CourseView>) result.convert(CourseView::from);

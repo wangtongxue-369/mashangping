@@ -38,10 +38,12 @@ public class ProblemService {
     }
 
     public Page<ProblemSummaryView> listMine(long teacherUid, int page, int size, String keyword) {
+        // keyword 可为 null：先判空归一，避免 .like 实参求值时 null.trim() 空指针
+        boolean hasKw = keyword != null && !keyword.isBlank();
+        String kw = hasKw ? LikeUtils.escapeForLike(keyword.trim()) : null;
         LambdaQueryWrapper<Problem> wrapper = new LambdaQueryWrapper<Problem>()
                 .eq(Problem::getTeacherId, teacherUid)
-                .like(keyword != null && !keyword.isBlank(), Problem::getTitle,
-                        LikeUtils.escapeForLike(keyword.trim()))
+                .like(hasKw, Problem::getTitle, kw)
                 .orderByDesc(Problem::getId);
         Page<Problem> result = problemMapper.selectPage(new Page<>(page, size), wrapper);
         // convert 返回 IPage，需按既有 CourseService 模式显式强转
