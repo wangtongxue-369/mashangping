@@ -12,6 +12,14 @@ const SubmissionsPage = lazy(() => import('./pages/teacher/SubmissionsPage'));
 const GradebookPage = lazy(() => import('./pages/teacher/GradebookPage'));
 const ProblemsPage = lazy(() => import('./pages/teacher/ProblemsPage'));
 const ProblemDetailPage = lazy(() => import('./pages/teacher/ProblemDetailPage'));
+// 学生端路由骨架（lazy 页面本任务提供最小可编译占位，供后续任务填充）。
+const StudentLayout = lazy(() => import('./layout/StudentLayout'));
+const MyCoursesPage = lazy(() => import('./pages/student/MyCoursesPage'));
+const CourseAssignmentsPage = lazy(() => import('./pages/student/CourseAssignmentsPage'));
+const AssignmentProblemsPage = lazy(() => import('./pages/student/AssignmentProblemsPage'));
+const CodingPage = lazy(() => import('./pages/student/CodingPage'));
+const PracticePage = lazy(() => import('./pages/student/PracticePage'));
+const PracticeCodingPage = lazy(() => import('./pages/student/PracticeCodingPage'));
 
 const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -32,6 +40,26 @@ const router = createBrowserRouter([
       { path: 'assignments/:assignmentId/gradebook', element: <GradebookPage /> },
       { path: 'problems', element: <ProblemsPage /> },
       { path: 'problems/:problemId', element: <ProblemDetailPage /> },
+    ],
+  },
+  {
+    path: '/student',
+    element: (
+      <ProtectedRoute role="STUDENT">
+        <StudentLayout />
+      </ProtectedRoute>
+    ),
+    children: [
+      { index: true, element: <Navigate to="/student/courses" replace /> },
+      { path: 'courses', element: <MyCoursesPage /> },
+      { path: 'courses/:courseId/assignments', element: <CourseAssignmentsPage /> },
+      { path: 'courses/:courseId/assignments/:assignmentId', element: <AssignmentProblemsPage /> },
+      {
+        path: 'courses/:courseId/assignments/:assignmentId/problems/:problemId',
+        element: <CodingPage />,
+      },
+      { path: 'practice/problems', element: <PracticePage /> },
+      { path: 'practice/problems/:problemId', element: <PracticeCodingPage /> },
     ],
   },
   { path: '*', element: <Navigate to="/login" replace /> },
