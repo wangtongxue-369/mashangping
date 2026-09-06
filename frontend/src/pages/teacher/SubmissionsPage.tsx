@@ -54,6 +54,11 @@ export default function SubmissionsPage() {
   const [studentId, setStudentId] = useState<number | undefined>(undefined);
   const [openId, setOpenId] = useState<number | null>(null); // 详情抽屉的 submissionId
 
+  // 跨作业切换时重置页码，避免「空表 + 页码超出」。
+  useEffect(() => {
+    setPage(1);
+  }, [assignmentId]);
+
   // 筛选数据源：成绩册一次给出题目列（assignmentProblemId）与学生名单，与成绩册页共享缓存。
   const gradebookQuery = useQuery({
     queryKey: ['gradebook', assignmentId],

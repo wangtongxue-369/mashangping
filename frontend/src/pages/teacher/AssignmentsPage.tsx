@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
+  Alert,
   App as AntApp,
   Button,
   Card,
@@ -237,7 +238,13 @@ export default function AssignmentsPage() {
           <Button size="small" type="text" onClick={() => navigate(`/teacher/assignments/${item.id}`)}>
             选题
           </Button>
-          <Popconfirm title="确定删除该作业吗？" onConfirm={() => onDelete(item)}>
+          <Popconfirm
+            title="确定删除该作业吗？"
+            description="该作业的提交与成绩数据将一并删除，且不可恢复。"
+            okText="删除"
+            okButtonProps={{ danger: true }}
+            onConfirm={() => onDelete(item)}
+          >
             <Button size="small" type="text" danger>
               删除
             </Button>
@@ -285,6 +292,14 @@ export default function AssignmentsPage() {
         okText={editing ? '保存' : '创建'}
         destroyOnHidden
       >
+        {editing?.isPublished ? (
+          <Alert
+            type="info"
+            showIcon
+            style={{ marginBottom: 12 }}
+            message="该作业已发布：对时间/说明/状态的改动会立即对学生生效。"
+          />
+        ) : null}
         <Form<AssignmentForm>
           layout="vertical"
           form={form}

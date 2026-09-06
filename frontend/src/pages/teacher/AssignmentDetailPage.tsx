@@ -12,7 +12,7 @@ import {
   Typography,
 } from 'antd';
 import type { TableProps } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
+import { DownOutlined, PlusOutlined, UpOutlined } from '@ant-design/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { client, extractApiMessage } from '../../api/client';
@@ -42,6 +42,7 @@ export default function AssignmentDetailPage() {
   const [scoreDrafts, setScoreDrafts] = useState<Record<number, number>>({}); // 已选题改分草稿
   const [savingScoreId, setSavingScoreId] = useState<number | null>(null);
   const [removingId, setRemovingId] = useState<number | null>(null);
+  const [orderingId, setOrderingId] = useState<number | null>(null);
 
   // 教师详情已内嵌已选题目清单（学生专用列表端点对教师有选课门，不可用）。
   const detailQuery = useQuery({
@@ -157,6 +158,26 @@ export default function AssignmentDetailPage() {
     }
   }
 
+  /** 上移/下移：按目标顺序整表提交（后端校验集合一致后覆写 sort_order）。 */
+  async function onMoveProblem(item: AssignmentProblemItem, dir: -1 | 1) {
+    const arr = detail?.problems ?? [];
+    const idx = arr.findIndex((p) => p.problemId === item.problemId);
+    const target = idx + dir;
+    if (idx < 0 || target < 0 || target >= arr.length) return;
+    const ordered = arr.map((p) => p.problemId);
+    [ordered[idx], ordered[target]] = [ordered[target], ordered[idx]];
+    setOrderingId(item.problemId);
+    try {
+      await client.put(`/assignments/${assignmentId}/problems/order`, { problemIds: ordered });
+      message.success('题序已更新');
+      invalidateDetail();
+    } catch (err) {
+      message.error(extractApiMessage(err, '题序更新失败，请重试'));
+    } finally {
+      setOrderingId(null);
+    }
+  }
+
   const problemColumns: TableProps<AssignmentProblemItem>['columns'] = [
     { title: '#', dataIndex: 'sortOrder', key: 'sortOrder', width: 60 },
     {
@@ -212,23 +233,44 @@ export default function AssignmentDetailPage() {
     {
       title: '操作',
       key: 'action',
-      width: 170,
-      render: (_, item) => (
-        <Space>
-          <Button
-            size="small"
-            type="link"
-            onClick={() => navigate(`/teacher/assignments/${assignmentId}/plagiarism/${item.problemId}`)}
-          >
-            查重
-          </Button>
-          <Popconfirm title="确定将该题移出作业吗？" onConfirm={() => onRemoveProblem(item)}>
-            <Button size="small" type="text" danger loading={removingId === item.problemId}>
-              移除
+      width: 210,
+      render: (_, item) => {
+        const arr = detail?.problems ?? [];
+        const idx = arr.findIndex((p) => p.problemId === item.problemId);
+        return (
+          <Space size={2}>
+            <Button
+              size="small"
+              type="text"
+              icon={<UpOutlined />}
+              title="上移"
+              disabled={idx <= 0 || orderingId != null}
+              loading={orderingId === item.problemId}
+              onClick={() => onMoveProblem(item, -1)}
+            />
+            <Button
+              size="small"
+              type="text"
+              icon={<DownOutlined />}
+              title="下移"
+              disabled={idx < 0 || idx >= arr.length - 1 || orderingId != null}
+              onClick={() => onMoveProblem(item, 1)}
+            />
+            <Button
+              size="small"
+              type="link"
+              onClick={() => navigate(`/teacher/assignments/${assignmentId}/plagiarism/${item.problemId}`)}
+            >
+              查重
             </Button>
-          </Popconfirm>
-        </Space>
-      ),
+            <Popconfirm title="确定将该题移出作业吗？" onConfirm={() => onRemoveProblem(item)}>
+              <Button size="small" type="text" danger loading={removingId === item.problemId}>
+                移除
+              </Button>
+            </Popconfirm>
+          </Space>
+        );
+      },
     },
   ];
 
@@ -315,6 +357,9 @@ export default function AssignmentDetailPage() {
         width={640}
         destroyOnHidden
       >
+        <Typography.Paragraph type="secondary" style={{ marginBottom: 8 }}>
+          仅展示本课程尚未选入本作业的题目；已选 {selectedIds.size} 题不在下列表（总数含全部课程题）。
+        </Typography.Paragraph>
         <Table<CourseProblemView>
           rowKey="problemId"
           columns={addColumns}

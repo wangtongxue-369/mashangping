@@ -110,7 +110,13 @@ export default function CoursesPage() {
           <Button size="small" type="text" onClick={() => openEdit(course)}>
             编辑
           </Button>
-          <Popconfirm title="确定删除该课程吗？" onConfirm={() => onDelete(course)}>
+          <Popconfirm
+            title="确定删除该课程吗？"
+            description="课程下的作业、学生提交与成绩数据将一并删除，且不可恢复。"
+            okText="删除"
+            okButtonProps={{ danger: true }}
+            onConfirm={() => onDelete(course)}
+          >
             <Button size="small" type="text" danger>
               删除
             </Button>

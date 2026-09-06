@@ -87,6 +87,13 @@ export default function CourseStudentsPage() {
     }
   }, [studentsQuery.isError, studentsQuery.error, message]);
 
+  // 跨课程切换时重置页码与筛选，避免「空表 + 页码超出」。
+  useEffect(() => {
+    setPage(1);
+    setKeyword('');
+    setStatus('');
+  }, [courseId]);
+
   function invalidateStudents() {
     // 前缀失效：名单主体与导入引起的变更一并刷新。
     queryClient.invalidateQueries({ queryKey: ['students', courseId] });
