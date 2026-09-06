@@ -24,14 +24,7 @@ import type {
   Page,
 } from '../../api/types';
 import CourseBreadcrumb from './CourseBreadcrumb';
-
-/** 后端 AssignmentStatus 实时推算状态的中文展示。 */
-const STATUS_META: Record<string, { label: string; color?: string }> = {
-  NOT_STARTED: { label: '未开始' },
-  IN_PROGRESS: { label: '进行中', color: 'processing' },
-  LATE_WINDOW: { label: '宽限期', color: 'warning' },
-  CLOSED: { label: '已结束' },
-};
+import { ASSIGN_STATUS_META, statusMeta } from './constants';
 
 /** 作业详情页（选题计分）：已选题目改分/移除 + 批量选入课程选题。 */
 export default function AssignmentDetailPage() {
@@ -61,6 +54,7 @@ export default function AssignmentDetailPage() {
   });
 
   const detail = detailQuery.data;
+  const detailStatus = detail ? statusMeta(ASSIGN_STATUS_META, detail.status) : null;
 
   // 可选题范围=本课程 course_problem（addProblems 的合法范围），Modal 打开时才拉。
   const courseProblemsQuery = useQuery({
@@ -271,8 +265,8 @@ export default function AssignmentDetailPage() {
             <Typography.Title level={4} style={{ margin: 0 }}>
               {detail.title}
             </Typography.Title>
-            <Tag color={STATUS_META[detail.status]?.color}>
-              {STATUS_META[detail.status]?.label ?? detail.status}
+            <Tag color={detailStatus?.color}>
+              {detailStatus?.label ?? detail.status}
             </Tag>
             <Tag color={detail.isPublished ? 'success' : 'default'}>
               {detail.isPublished ? '已发布' : '草稿'}

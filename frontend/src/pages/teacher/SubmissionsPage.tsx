@@ -26,18 +26,7 @@ import type {
   TeacherSubmissionDetail,
   TeacherSubmissionRow,
 } from '../../api/gradebookTypes';
-
-/** 提交状态 → 中文标签与着色（后端 Submission.STATUS_*；未收录值兜底灰 Tag）。 */
-const STATUS_META: Record<string, { label: string; color: string }> = {
-  AC: { label: '通过', color: 'success' },
-  WA: { label: '答案错误', color: 'warning' },
-  TLE: { label: '超出时限', color: 'error' },
-  MLE: { label: '内存超限', color: 'error' },
-  RE: { label: '运行错误', color: 'error' },
-  CE: { label: '编译错误', color: 'default' },
-  PENDING: { label: '排队中', color: 'processing' },
-  RUNNING: { label: '判题中', color: 'processing' },
-};
+import { SUBMIT_STATUS_META as STATUS_META } from './constants';
 
 function StatusTag({ status }: { status: string }) {
   const meta = STATUS_META[status];

@@ -28,14 +28,7 @@ import type {
 } from '../../api/types';
 import { useTeacherCourse } from './context';
 import CourseBreadcrumb from './CourseBreadcrumb';
-
-/** 后端 AssignmentStatus 实时推算状态的中文展示。 */
-const STATUS_META: Record<string, { label: string; color?: string }> = {
-  NOT_STARTED: { label: '未开始' },
-  IN_PROGRESS: { label: '进行中', color: 'processing' },
-  LATE_WINDOW: { label: '宽限期', color: 'warning' },
-  CLOSED: { label: '已结束' },
-};
+import { ASSIGN_STATUS_META, statusMeta } from './constants';
 
 /** 提交后端的 LocalDateTime 序列化格式（禁 toISOString：UTC 偏移会错位）。 */
 const DATETIME_PAYLOAD = 'YYYY-MM-DDTHH:mm:ss';
@@ -208,7 +201,10 @@ export default function AssignmentsPage() {
       title: '状态',
       dataIndex: 'status',
       key: 'status',
-      render: (s: string) => <Tag color={STATUS_META[s]?.color}>{STATUS_META[s]?.label ?? s}</Tag>,
+      render: (s: string) => {
+        const m = statusMeta(ASSIGN_STATUS_META, s);
+        return <Tag color={m.color}>{m.label}</Tag>;
+      },
     },
     {
       title: '发布',
