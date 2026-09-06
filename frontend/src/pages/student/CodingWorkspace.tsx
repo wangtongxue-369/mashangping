@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Editor from '@monaco-editor/react';
-import { App as AntApp, Button, Descriptions, Drawer, Empty, Select, Spin, Table, Tag } from 'antd';
+import { App as AntApp, Button, Descriptions, Drawer, Empty, Select, Space, Spin, Table, Tag } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { client } from '../../api/client';
 import { useAuth } from '../../auth/useAuth';
@@ -23,7 +23,7 @@ export interface CodingWorkspaceProps {
 }
 
 /** 语言键 → 展示名 / Monaco 语言。 */
-const LANGUAGE_META: Record<string, { label: string; monaco: string }> = {
+export const LANGUAGE_META: Record<string, { label: string; monaco: string }> = {
   C: { label: 'C', monaco: 'c' },
   CPP: { label: 'C++', monaco: 'cpp' },
   JAVA: { label: 'Java', monaco: 'java' },
@@ -50,14 +50,18 @@ const SUB_STATUS: Record<string, { label: string; color: string }> = {
   SYSTEM_ERROR: { label: '系统错误', color: 'black' },
 };
 
+function subStatusLabel(s: string): string {
+  return SUB_STATUS[s]?.label ?? s;
+}
+
 function subStatusTag(s: string) {
   const m = SUB_STATUS[s] ?? { label: s, color: 'default' };
   return <Tag color={m.color}>{m.label}</Tag>;
 }
 
 /**
- * 编码工作区（作业/练习共用）：语言选择 + Monaco 编辑 + 提交 + 我的提交历史 +
- * 详情抽屉（样例点完整输入输出，隐藏点零泄漏）+ 判题进度实时推送。
+ * 编码工作区（作业/练习共用）：语言选择 + Monaco 编辑 + 提交 + 我的最高分与提交历史 +
+ * 详情抽屉（样例点完整输入输出，隐藏点零泄漏）+ 判题进度实时推送（best-effort）。
  */
 export default function CodingWorkspace({ languages, submitTarget, historyAnchor }: CodingWorkspaceProps) {
   const { token } = useAuth();
@@ -67,6 +71,7 @@ export default function CodingWorkspace({ languages, submitTarget, historyAnchor
   const [language, setLanguage] = useState(languages[0] ?? 'C');
   const [code, setCode] = useState(() => STARTER[languages[0] ?? 'C'] ?? '');
   const [detailId, setDetailId] = useState<number | null>(null);
+  const [live, setLive] = useState<string | null>(null);
   const latestIdRef = useRef<number | null>(null);
 
   const anchorKey = useMemo(() => JSON.stringify(historyAnchor), [historyAnchor]);
@@ -86,6 +91,12 @@ export default function CodingWorkspace({ languages, submitTarget, historyAnchor
       return resp.data.data;
     },
   });
+
+  /** 我的最高分：全部提交中 score 非空的最大值；无判分结果为 null。 */
+  const bestScore = useMemo(() => {
+    const scores = (history ?? []).map((h) => h.score).filter((s): s is number => s != null);
+    return scores.length === 0 ? null : Math.max(...scores);
+  }, [history]);
 
   const { data: detail, isLoading: detailLoading } = useQuery<SubmissionDetail>({
     queryKey: ['submissionDetail', detailId],
@@ -107,6 +118,7 @@ export default function CodingWorkspace({ languages, submitTarget, historyAnchor
     },
     onSuccess: (created: { id: number; status: string }) => {
       latestIdRef.current = created.id;
+      setLive('已提交，等待评测…');
       message.success('提交成功，开始评测');
       queryClient.invalidateQueries({ queryKey: historyQueryKey });
     },
@@ -115,18 +127,37 @@ export default function CodingWorkspace({ languages, submitTarget, historyAnchor
     },
   });
 
-  // 判题进度实时推送：best-effort，收到匹配 FINISHED 后刷新我的提交历史；卸载断开。
+  // 判题进度实时推送：best-effort，只消费「最近一次提交」的事件；FINISHED 后刷新历史。
   useEffect(() => {
     if (!token) return undefined;
     return connect({
       token,
       onEvent: (e) => {
-        if (e.type === 'FINISHED' && latestIdRef.current != null && e.submissionId === latestIdRef.current) {
-          queryClient.invalidateQueries({ queryKey: historyQueryKey });
+        if (e.submissionId !== latestIdRef.current) return;
+        switch (e.type) {
+          case 'JUDGING':
+            setLive('评测中…');
+            break;
+          case 'POINT':
+            setLive(`第 ${(e.pointIndex ?? 0) + 1} 个测试点：${subStatusLabel(e.status ?? '')}`);
+            break;
+          case 'COMPILE_ERROR':
+            setLive(`编译错误：${e.message ?? '（无输出）'}`);
+            break;
+          case 'FINISHED':
+            setLive(`评测完成：${subStatusLabel(e.finalStatus ?? '')}`);
+            queryClient.invalidateQueries({ queryKey: historyQueryKey });
+            break;
+          default:
+            break;
         }
       },
     });
   }, [token, anchorKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const refreshHistory = () => {
+    queryClient.invalidateQueries({ queryKey: historyQueryKey });
+  };
 
   const onLanguageChange = (next: string) => {
     setLanguage(next);
@@ -171,17 +202,25 @@ export default function CodingWorkspace({ languages, submitTarget, historyAnchor
   return (
     <div>
       <div style={{ marginBottom: 12 }}>
-        <Select
-          value={language}
-          style={{ width: 140 }}
-          onChange={onLanguageChange}
-          options={languages.map((l) => ({ value: l, label: LANGUAGE_META[l]?.label ?? l }))}
-        />
-        <Button type="primary" style={{ marginLeft: 12 }} loading={submit.isPending} onClick={() => submit.mutate({ language, code })}>
-          提交评测
-        </Button>
-        {submitTarget.type === 'practice' ? <Tag style={{ marginLeft: 12 }}>自由练习</Tag> : null}
+        <Space>
+          <Select
+            value={language}
+            style={{ width: 140 }}
+            onChange={onLanguageChange}
+            options={languages.map((l) => ({ value: l, label: LANGUAGE_META[l]?.label ?? l }))}
+          />
+          <Button type="primary" loading={submit.isPending} onClick={() => submit.mutate({ language, code })}>
+            提交评测
+          </Button>
+          {submitTarget.type === 'practice' ? <Tag>自由练习</Tag> : null}
+        </Space>
       </div>
+
+      {live ? (
+        <div style={{ marginBottom: 8 }} data-testid="live-progress">
+          <Tag color="geekblue">评测进度</Tag> {live}
+        </div>
+      ) : null}
 
       <Editor
         height="360px"
@@ -190,7 +229,17 @@ export default function CodingWorkspace({ languages, submitTarget, historyAnchor
         onChange={(v) => setCode(v ?? '')}
       />
 
-      <h3>我的提交</h3>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
+        <Space>
+          <h3 style={{ margin: 0 }}>我的提交</h3>
+          <Tag color={bestScore == null ? 'default' : 'green'}>
+            我的最高分：{bestScore == null ? '—' : bestScore}
+          </Tag>
+        </Space>
+        <Button size="small" onClick={refreshHistory}>
+          刷新
+        </Button>
+      </div>
       <Table<SubmissionSummary>
         rowKey="id"
         size="small"
@@ -234,7 +283,7 @@ export default function CodingWorkspace({ languages, submitTarget, historyAnchor
             />
             <h4>测试点结果</h4>
             {detail.samples.map((p) => sampleDesc(p))}
-            <h4>隐藏测试点（未通过不显示输入输出）</h4>
+            <h4>隐藏测试点（仅展示状态/用时/内存，不展示输入输出）</h4>
             {detail.maskedPoints.length === 0 ? (
               <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="无隐藏测试点信息" />
             ) : (

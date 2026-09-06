@@ -52,5 +52,9 @@ describe('CourseAssignmentsPage', () => {
     expect(screen.getByText('未开始')).toBeTruthy();
     expect(screen.getByText('进行中')).toBeTruthy();
     expect(screen.getByText('← 返回我的课程')).toBeTruthy();
+    // 未开始作业不可进入：标题不是链接/按钮；进行中作业是可点击入口（按钮）。
+    expect(screen.getByText('未开始作业').closest('button')).toBeNull();
+    expect(screen.getByText('未开始作业').closest('a')).toBeNull();
+    expect(screen.getByText('进行中作业').closest('button')).not.toBeNull();
   });
 });
