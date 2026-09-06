@@ -136,7 +136,8 @@ public class StudentAssignmentService {
                 .map(tc -> new AssignmentViews.StudentSample(tc.getInput(), tc.getExpectedOutput()))
                 .toList();
         return new AssignmentViews.StudentProblemDetail(ap.getId(), p.getId(), p.getTitle(), p.getDescription(),
-                Languages.parse(p.getAllowedLanguages()), p.getTimeLimitMs(), p.getMemoryLimitMb(), samples);
+                Languages.parse(p.getAllowedLanguages()), p.getTimeLimitMs(), p.getMemoryLimitMb(),
+                ap.getScore(), samples);
     }
 
     private Assignment visibleAssignment(long studentUid, long courseId, long assignmentId) {

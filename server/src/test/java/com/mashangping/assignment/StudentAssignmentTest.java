@@ -195,6 +195,7 @@ class StudentAssignmentTest extends IntegrationTestBase {
                         + visiblePid)
                         .header("Authorization", student()))
                 .andExpect(jsonPath("$.data.description").value("MD 题面 可见题"))
+                .andExpect(jsonPath("$.data.score").value(10))
                 .andExpect(jsonPath("$.data.samples[0].input").value("样例输入值"))
                 .andExpect(jsonPath("$.data.samples[0].output").value("样例输出值"))
                 // 隐藏点零泄漏：整响应不得出现隐藏点内容

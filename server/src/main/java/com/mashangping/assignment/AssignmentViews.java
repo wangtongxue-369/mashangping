@@ -44,7 +44,7 @@ public final class AssignmentViews {
 
     public record StudentProblemDetail(long assignmentProblemId, long problemId, String title,
                                        String description, List<String> languages, int timeLimitMs,
-                                       int memoryLimitMb, List<StudentSample> samples) {
+                                       int memoryLimitMb, int score, List<StudentSample> samples) {
     }
 
     private AssignmentViews() {

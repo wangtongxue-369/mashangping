@@ -103,6 +103,7 @@ class AssignmentViewsFieldTest {
         ap.setId(apId);
         ap.setAssignmentId(assignmentId);
         ap.setProblemId(problemId);
+        ap.setScore(10);
 
         EnrollmentMapper enrollmentMapper = mock(EnrollmentMapper.class);
         AssignmentMapper assignmentMapper = mock(AssignmentMapper.class);
@@ -123,6 +124,7 @@ class AssignmentViewsFieldTest {
                 service.problemDetail(1L, 3L, assignmentId, problemId);
         assertThat(detail.assignmentProblemId()).isEqualTo(apId);
         assertThat(detail.problemId()).isEqualTo(problemId);
+        assertThat(detail.score()).isEqualTo(10);
     }
 
     private static List<String> recordFields(Class<?> recordType) {
