@@ -13,3 +13,5 @@ logs/
 frontend/.npmrc
 
 .docker/
+
+.DS_Store
