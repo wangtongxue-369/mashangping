@@ -26,18 +26,19 @@ public final class AssignmentViews {
                                   int lateDays, long problemCount, String status) {
     }
 
-    /** 学生题目列表行（含语言集合/时空限制，供前端进入编码页） */
-    public record StudentProblemItem(long problemId, String title, int score, int sortOrder,
-                                     List<String> languages, int timeLimitMs, int memoryLimitMb) {
+    /** 学生题目列表行（含作业锚 assignmentProblemId/语言集合/时空限制，供前端进入编码页） */
+    public record StudentProblemItem(long assignmentProblemId, long problemId, String title, int score,
+                                     int sortOrder, List<String> languages, int timeLimitMs,
+                                     int memoryLimitMb) {
     }
 
     /** 学生题目阅读视图：样例点完整输入输出；隐藏点零泄漏 */
     public record StudentSample(String input, String output) {
     }
 
-    public record StudentProblemDetail(long problemId, String title, String description,
-                                       List<String> languages, int timeLimitMs, int memoryLimitMb,
-                                       List<StudentSample> samples) {
+    public record StudentProblemDetail(long assignmentProblemId, long problemId, String title,
+                                       String description, List<String> languages, int timeLimitMs,
+                                       int memoryLimitMb, List<StudentSample> samples) {
     }
 
     private AssignmentViews() {

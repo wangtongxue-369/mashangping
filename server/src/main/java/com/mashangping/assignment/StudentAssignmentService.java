@@ -82,7 +82,7 @@ public class StudentAssignmentService {
                 .map(ap -> {
                     Problem p = problems.get(ap.getProblemId());
                     return new AssignmentViews.StudentProblemItem(
-                            ap.getProblemId(), p != null ? p.getTitle() : "",
+                            ap.getId(), ap.getProblemId(), p != null ? p.getTitle() : "",
                             ap.getScore(), ap.getSortOrder(),
                             p != null ? Languages.parse(p.getAllowedLanguages()) : List.of(),
                             p != null ? p.getTimeLimitMs() : 0,
@@ -114,7 +114,7 @@ public class StudentAssignmentService {
                 .stream()
                 .map(tc -> new AssignmentViews.StudentSample(tc.getInput(), tc.getExpectedOutput()))
                 .toList();
-        return new AssignmentViews.StudentProblemDetail(p.getId(), p.getTitle(), p.getDescription(),
+        return new AssignmentViews.StudentProblemDetail(ap.getId(), p.getId(), p.getTitle(), p.getDescription(),
                 Languages.parse(p.getAllowedLanguages()), p.getTimeLimitMs(), p.getMemoryLimitMb(), samples);
     }
 
