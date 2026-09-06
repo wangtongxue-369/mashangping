@@ -53,6 +53,6 @@ describe('AssignmentProblemsPage', () => {
     expect(await screen.findByText('两数之和')).toBeTruthy();
     expect(screen.getByText('C')).toBeTruthy();
     expect(screen.getByText('C++')).toBeTruthy();
-    expect(screen.getByText('← 返回作业列表')).toBeTruthy();
+    expect(screen.getByText('作业列表')).toBeTruthy();
   });
 });

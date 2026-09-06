@@ -2,16 +2,15 @@ import { useQuery } from '@tanstack/react-query';
 import { Button, Spin } from 'antd';
 import { useNavigate, useParams } from 'react-router-dom';
 import { client } from '../../api/client';
-import MarkdownView from '../../components/MarkdownView';
 import type { StudentProblemDetail } from '../../api/studentTypes';
 import CodingWorkspace from './CodingWorkspace';
 
-/** 作业题目阅读 + 编码页：题面(MD) + 样例点示例输入输出 + CodingWorkspace（作业锚提交）。 */
+/** 作业题目阅读 + 编码页：取题详情后交给双栏 CodingWorkspace（作业锚提交）。 */
 export default function CodingPage() {
   const { courseId, assignmentId, problemId } = useParams();
   const navigate = useNavigate();
 
-  const { data: detail, isLoading } = useQuery<StudentProblemDetail>({
+  const { data: detail, isLoading, isError } = useQuery<StudentProblemDetail>({
     queryKey: ['assignmentProblemDetail', courseId, assignmentId, problemId],
     queryFn: async () => {
       const resp = await client.get(`/courses/${courseId}/assignments/${assignmentId}/problems/${problemId}`);
@@ -23,41 +22,42 @@ export default function CodingPage() {
   if (isLoading) {
     return <Spin style={{ display: 'block', margin: '48px auto' }} />;
   }
+  if (isError || !detail) {
+    return (
+      <div className="msp-card" style={{ marginTop: 16, textAlign: 'center' }}>
+        <p style={{ color: '#6b7280' }}>题目加载失败或不可见（作业可能尚未开始）。</p>
+        <Button onClick={() => navigate(`/student/courses/${courseId}/assignments/${assignmentId}`)}>
+          返回题目列表
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div>
-      <Button onClick={() => navigate(`/student/courses/${courseId}/assignments/${assignmentId}`)}>
-        ← 返回题目列表
-      </Button>
-      {detail ? (
-        <>
-          <h2>{detail.title}</h2>
-          <div style={{ marginBottom: 8, color: '#666' }}>
-            限时 {detail.timeLimitMs}ms / 内存 {detail.memoryLimitMb}MB
-          </div>
-          <MarkdownView source={detail.description} />
-          <h3 style={{ marginTop: 16 }}>样例</h3>
-          {detail.samples.length === 0 ? (
-            <div>本题无样例。</div>
-          ) : (
-            detail.samples.map((s, i) => (
-              <div key={i} style={{ marginBottom: 12 }}>
-                <b>样例 {i + 1}</b>
-                <div>输入</div>
-                <pre style={{ background: '#f5f5f5', padding: 8 }}>{s.input}</pre>
-                <div>输出</div>
-                <pre style={{ background: '#f5f5f5', padding: 8 }}>{s.output}</pre>
-              </div>
-            ))
-          )}
-          <hr style={{ margin: '20px 0', border: 'none', borderTop: '1px solid #eee' }} />
-          <CodingWorkspace
-            languages={detail.languages}
-            submitTarget={{ type: 'assignment', assignmentProblemId: detail.assignmentProblemId }}
-            historyAnchor={{ assignmentProblemId: detail.assignmentProblemId }}
-          />
-        </>
-      ) : null}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+        <Button
+          type="text"
+          icon={<span>←</span>}
+          onClick={() => navigate(`/student/courses/${courseId}/assignments/${assignmentId}`)}
+        >
+          题目列表
+        </Button>
+        <span style={{ color: '#9aa0a6', fontSize: 13 }}>
+          {courseId && assignmentId ? `课程 ${courseId} / 作业 ${assignmentId}` : ''}
+        </span>
+      </div>
+      <CodingWorkspace
+        title={detail.title}
+        description={detail.description}
+        samples={detail.samples}
+        languages={detail.languages}
+        timeLimitMs={detail.timeLimitMs}
+        memoryLimitMb={detail.memoryLimitMb}
+        submitTarget={{ type: 'assignment', assignmentProblemId: detail.assignmentProblemId }}
+        historyAnchor={{ assignmentProblemId: detail.assignmentProblemId }}
+        typeTag="作业题"
+      />
     </div>
   );
 }

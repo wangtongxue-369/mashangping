@@ -1,0 +1,173 @@
+/* ===== 码上评 前端全局样式（浅色基调 + 白卡片，学生端为主）===== */
+
+:root {
+  --msp-bg: #f4f5f7;
+  --msp-card-border: #e6e8eb;
+  --msp-text: #1f2329;
+  --msp-text-secondary: #6b7280;
+  --msp-primary: #1677ff;
+}
+
+html,
+body {
+  background: var(--msp-bg);
+}
+
+body {
+  margin: 0;
+  color: var(--msp-text);
+}
+
+/* 内容容器：全站统一留白与最大宽度 */
+.msp-shell-content {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 20px 24px 48px;
+}
+
+/* 通用白卡片 */
+.msp-card {
+  background: #fff;
+  border: 1px solid var(--msp-card-border);
+  border-radius: 12px;
+  padding: 20px 24px;
+}
+
+/* 页面标题区 */
+.msp-page-title {
+  margin: 0 0 4px;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--msp-text);
+}
+
+.msp-page-sub {
+  margin: 0 0 16px;
+  color: var(--msp-text-secondary);
+  font-size: 13px;
+}
+
+/* ===== 题干 Markdown 排版（作用于 .markdown-body）===== */
+.markdown-body {
+  font-size: 14px;
+  line-height: 1.75;
+  color: #26282c;
+  word-break: break-word;
+}
+
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3,
+.markdown-body h4 {
+  margin: 18px 0 10px;
+  font-weight: 600;
+  color: #1f2329;
+}
+
+.markdown-body h1 { font-size: 20px; }
+.markdown-body h2 { font-size: 18px; }
+.markdown-body h3 { font-size: 16px; }
+
+.markdown-body p {
+  margin: 6px 0;
+}
+
+.markdown-body code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+  background: #f0f1f3;
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.markdown-body pre {
+  background: #f6f8fa;
+  border: 1px solid #eceef1;
+  border-radius: 8px;
+  padding: 12px 14px;
+  overflow: auto;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.markdown-body pre code {
+  background: transparent;
+  padding: 0;
+}
+
+.markdown-body blockquote {
+  margin: 10px 0;
+  padding: 4px 14px;
+  border-left: 3px solid #d0d7de;
+  color: #57606a;
+  background: #fafbfc;
+}
+
+.markdown-body table {
+  border-collapse: collapse;
+  margin: 10px 0;
+}
+
+.markdown-body th,
+.markdown-body td {
+  border: 1px solid #e2e5ea;
+  padding: 6px 12px;
+}
+
+.markdown-body ul,
+.markdown-body ol {
+  padding-left: 22px;
+  margin: 6px 0;
+}
+
+/* ===== 牛客式双栏答题页 ===== */
+.solve-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 44%) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 960px) {
+  .solve-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* 题面区正文可滚动，让编辑器保持视口内 */
+.solve-statement {
+  max-height: calc(100vh - 220px);
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+/* 样例输入输出展示块 */
+.solve-sample {
+  margin-top: 10px;
+}
+
+.solve-sample pre {
+  background: #f6f8fa;
+  border: 1px solid #eceef1;
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin: 4px 0 8px;
+  font-size: 13px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* 判题实时进度条/状态带 */
+.solve-live {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 6px 10px;
+  background: #f7f9fc;
+  border: 1px solid #e6e8eb;
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--msp-text-secondary);
+}

@@ -7,6 +7,7 @@ import zhCN from 'antd/locale/zh_CN';
 import { queryClient } from './api/query';
 import { AuthProvider } from './auth/useAuth';
 import router from './App';
+import './styles/global.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <StrictMode>

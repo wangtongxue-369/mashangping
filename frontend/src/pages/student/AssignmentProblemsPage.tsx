@@ -4,14 +4,7 @@ import type { ColumnsType } from 'antd/es/table';
 import { useNavigate, useParams } from 'react-router-dom';
 import { client } from '../../api/client';
 import type { StudentProblemItem } from '../../api/studentTypes';
-
-/** 语言键 → 展示名（对齐 CodingWorkspace 的 LANGUAGE_META）。 */
-const LANG_LABEL: Record<string, string> = {
-  C: 'C',
-  CPP: 'C++',
-  JAVA: 'Java',
-  PYTHON: 'Python',
-};
+import { LANGUAGE_LABEL } from './constants';
 
 /** 作业题目列表：GET /api/courses/{courseId}/assignments/{assignmentId}/problems，点击进入编码页。 */
 export default function AssignmentProblemsPage() {
@@ -28,11 +21,17 @@ export default function AssignmentProblemsPage() {
 
   const columns: ColumnsType<StudentProblemItem> = [
     {
+      title: '题号',
+      width: 70,
+      render: (_, __, index) => <span style={{ color: '#9aa0a6' }}>{index + 1}</span>,
+    },
+    {
       title: '题目',
       dataIndex: 'title',
       render: (title: string, row) => (
         <Button
           type="link"
+          style={{ padding: 0, fontWeight: 500 }}
           onClick={() =>
             navigate(`/student/courses/${courseId}/assignments/${assignmentId}/problems/${row.problemId}`)
           }
@@ -48,7 +47,7 @@ export default function AssignmentProblemsPage() {
       render: (langs: string[]) =>
         (langs ?? []).map((l) => (
           <Tag key={l} style={{ marginInlineEnd: 4 }}>
-            {LANG_LABEL[l] ?? l}
+            {LANGUAGE_LABEL[l] ?? l}
           </Tag>
         )),
     },
@@ -58,15 +57,22 @@ export default function AssignmentProblemsPage() {
 
   return (
     <div>
-      <Button onClick={() => navigate(`/student/courses/${courseId}/assignments`)}>← 返回作业列表</Button>
-      <h2>作业题目</h2>
-      <Table<StudentProblemItem>
-        rowKey="problemId"
-        loading={isLoading}
-        columns={columns}
-        dataSource={list ?? []}
-        pagination={false}
-      />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
+        <Button type="text" icon={<span>←</span>} onClick={() => navigate(`/student/courses/${courseId}/assignments`)}>
+          作业列表
+        </Button>
+      </div>
+      <h2 className="msp-page-title">作业题目</h2>
+      <p className="msp-page-sub">点击题目进入作答：阅读题面并在右侧编码提交</p>
+      <div className="msp-card">
+        <Table<StudentProblemItem>
+          rowKey="problemId"
+          loading={isLoading}
+          columns={columns}
+          dataSource={list ?? []}
+          pagination={false}
+        />
+      </div>
     </div>
   );
 }

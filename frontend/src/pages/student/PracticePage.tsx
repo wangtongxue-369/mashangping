@@ -5,9 +5,7 @@ import type { ColumnsType } from 'antd/es/table';
 import { useNavigate } from 'react-router-dom';
 import { client } from '../../api/client';
 import type { PracticeSummary } from '../../api/studentTypes';
-
-/** 语言键 → 展示名。 */
-const LANG_LABEL: Record<string, string> = { C: 'C', CPP: 'C++', JAVA: 'Java', PYTHON: 'Python' };
+import { LANGUAGE_LABEL } from './constants';
 
 /** 公开题库浏览：GET /api/practice/problems 分页列表，点击进入练习编码页。 */
 export default function PracticePage() {
@@ -24,10 +22,17 @@ export default function PracticePage() {
 
   const columns: ColumnsType<PracticeSummary> = [
     {
+      title: '题号',
+      width: 70,
+      render: (_, __, index) => (
+        <span style={{ color: '#9aa0a6' }}>{(page - 1) * 20 + index + 1}</span>
+      ),
+    },
+    {
       title: '题目',
       dataIndex: 'title',
       render: (title: string, row) => (
-        <Button type="link" onClick={() => navigate(`/student/practice/problems/${row.id}`)}>
+        <Button type="link" style={{ padding: 0, fontWeight: 500 }} onClick={() => navigate(`/student/practice/problems/${row.id}`)}>
           {title}
         </Button>
       ),
@@ -38,7 +43,7 @@ export default function PracticePage() {
       render: (langs: string[]) =>
         (langs ?? []).map((l) => (
           <Tag key={l} style={{ marginInlineEnd: 4 }}>
-            {LANG_LABEL[l] ?? l}
+            {LANGUAGE_LABEL[l] ?? l}
           </Tag>
         )),
     },
@@ -48,20 +53,23 @@ export default function PracticePage() {
 
   return (
     <div>
-      <h2>自由练习</h2>
-      <Table<PracticeSummary>
-        rowKey="id"
-        loading={isLoading}
-        columns={columns}
-        dataSource={paged?.records ?? []}
-        pagination={{
-          current: page,
-          pageSize: 20,
-          total: paged?.total ?? 0,
-          onChange: setPage,
-          showSizeChanger: false,
-        }}
-      />
+      <h2 className="msp-page-title">自由练习</h2>
+      <p className="msp-page-sub">平台公开题库，随时练习、实时判题</p>
+      <div className="msp-card">
+        <Table<PracticeSummary>
+          rowKey="id"
+          loading={isLoading}
+          columns={columns}
+          dataSource={paged?.records ?? []}
+          pagination={{
+            current: page,
+            pageSize: 20,
+            total: paged?.total ?? 0,
+            onChange: setPage,
+            showSizeChanger: false,
+          }}
+        />
+      </div>
     </div>
   );
 }
