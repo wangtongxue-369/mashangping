@@ -50,11 +50,15 @@ public class AssignmentController {
                 PageUtils.page(page), PageUtils.size(size)));
     }
 
+    /** 同路径角色分流：教师取作业详情（全字段），学生取作业上下文头（深链页头，已发布+已选课门） */
     @GetMapping("/assignments/{id}")
-    @PreAuthorize("hasRole('TEACHER')")
-    public ApiResponse<AssignmentViews.TeacherDetail> detail(@AuthenticationPrincipal TokenPayload me,
-                                                             @PathVariable long id) {
-        return ApiResponse.ok(assignmentService.detail(me.uid(), id));
+    @PreAuthorize("hasAnyRole('STUDENT','TEACHER')")
+    public ApiResponse<?> detail(@AuthenticationPrincipal TokenPayload me,
+                                 @PathVariable long id) {
+        if (User.ROLE_TEACHER.equals(me.role())) {
+            return ApiResponse.ok(assignmentService.detail(me.uid(), id));
+        }
+        return ApiResponse.ok(studentAssignmentService.header(me.uid(), id));
     }
 
     @PutMapping("/assignments/{id}")

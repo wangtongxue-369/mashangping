@@ -71,7 +71,7 @@ class AssignmentViewsFieldTest {
         when(problemMapper.selectBatchIds(any())).thenReturn(List.of(p));
 
         StudentAssignmentService service = new StudentAssignmentService(
-                enrollmentMapper, assignmentMapper, assignmentProblemMapper, problemMapper, null);
+                enrollmentMapper, assignmentMapper, assignmentProblemMapper, null, problemMapper, null);
 
         List<AssignmentViews.StudentProblemItem> items = service.problems(1L, 3L, assignmentId);
         assertThat(items).hasSize(1);
@@ -117,7 +117,7 @@ class AssignmentViewsFieldTest {
         when(testCaseMapper.selectList(any())).thenReturn(List.of());
 
         StudentAssignmentService service = new StudentAssignmentService(
-                enrollmentMapper, assignmentMapper, assignmentProblemMapper, problemMapper, testCaseMapper);
+                enrollmentMapper, assignmentMapper, assignmentProblemMapper, null, problemMapper, testCaseMapper);
 
         AssignmentViews.StudentProblemDetail detail =
                 service.problemDetail(1L, 3L, assignmentId, problemId);

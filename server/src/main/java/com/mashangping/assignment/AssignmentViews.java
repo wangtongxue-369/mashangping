@@ -12,13 +12,19 @@ public final class AssignmentViews {
                                   String status) {
     }
 
-    /** 教师详情：全字段 + 题目清单 */
-    public record TeacherDetail(long id, long courseId, String title, String description,
-                                LocalDateTime startAt, LocalDateTime dueAt, int lateDays,
-                                boolean isPublished, String status,
+    /** 教师详情：全字段 + 课程名（页头上下文） + 题目清单 */
+    public record TeacherDetail(long id, long courseId, String courseName, String title,
+                                String description, LocalDateTime startAt, LocalDateTime dueAt,
+                                int lateDays, boolean isPublished, String status,
                                 List<ProblemItem> problems) {
         public record ProblemItem(long problemId, String title, int score, int sortOrder) {
         }
+    }
+
+    /** 学生作业上下文（作业题目/编码页深链页头共用）：已发布且已选课即可读，不要求已开始 */
+    public record StudentAssignmentHeader(long courseId, String courseName, long assignmentId,
+                                          String title, String status, LocalDateTime startAt,
+                                          LocalDateTime dueAt, int lateDays, long problemCount) {
     }
 
     /** 学生作业列表行 */

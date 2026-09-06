@@ -238,12 +238,22 @@ class StudentAssignmentTest extends IntegrationTestBase {
     }
 
     @Test
-    void student_forbidden_on_teacher_assignment_detail_endpoint() throws Exception {
-        // 终审补强：学生打教师详情端点（@PreAuthorize TEACHER）→ 真 HTTP 403 + 40300
+    void student_reads_assignment_header_from_detail_endpoint() throws Exception {
+        // 计划10：GET /api/assignments/{id} 角色分流——已选课学生读作业上下文头（深链页头），非教师详情
         mockMvc.perform(get("/api/assignments/" + publishedAssignmentId)
                         .header("Authorization", student()))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value(40300));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.assignmentId").value(publishedAssignmentId))
+                .andExpect(jsonPath("$.data.courseId").value(courseIdA))
+                .andExpect(jsonPath("$.data.title").value("已发布作业"))
+                .andExpect(jsonPath("$.data.status").value("IN_PROGRESS"))
+                .andExpect(jsonPath("$.data.problemCount").value(1))
+                // 结构隔离：学生头不含教师详情字段
+                .andExpect(content().string(org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.containsString("totalScore"))))
+                .andExpect(content().string(org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.containsString("\"isPublished\""))));
     }
 
     private List<Long> studentVisibleIds() throws Exception {

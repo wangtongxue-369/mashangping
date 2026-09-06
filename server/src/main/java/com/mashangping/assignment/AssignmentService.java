@@ -7,6 +7,7 @@ import com.mashangping.assignment.dto.AssignmentScoreRequest;
 import com.mashangping.assignment.dto.AssignmentUpsertRequest;
 import com.mashangping.common.BizException;
 import com.mashangping.common.ErrorCode;
+import com.mashangping.course.Course;
 import com.mashangping.course.CourseMapper;
 import com.mashangping.course.CourseService;
 import com.mashangping.problem.CourseProblem;
@@ -105,7 +106,9 @@ public class AssignmentService {
                             ap.getScore(), ap.getSortOrder());
                 })
                 .toList();
-        return new AssignmentViews.TeacherDetail(a.getId(), a.getCourseId(), a.getTitle(),
+        Course course = courseMapper.selectById(a.getCourseId());
+        String courseName = course != null ? course.getName() : "";
+        return new AssignmentViews.TeacherDetail(a.getId(), a.getCourseId(), courseName, a.getTitle(),
                 a.getDescription(), a.getStartAt(), a.getDueAt(), a.getLateDays(),
                 Boolean.TRUE.equals(a.getIsPublished()),
                 AssignmentStatus.of(LocalDateTime.now(), a.getStartAt(), a.getDueAt(),

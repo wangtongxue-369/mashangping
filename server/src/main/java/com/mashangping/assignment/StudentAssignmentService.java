@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.mashangping.common.BizException;
 import com.mashangping.common.ErrorCode;
+import com.mashangping.course.Course;
+import com.mashangping.course.CourseMapper;
 import com.mashangping.course.Enrollment;
 import com.mashangping.course.EnrollmentMapper;
 import com.mashangping.problem.Languages;
@@ -28,6 +30,7 @@ public class StudentAssignmentService {
     private final EnrollmentMapper enrollmentMapper;
     private final AssignmentMapper assignmentMapper;
     private final AssignmentProblemMapper assignmentProblemMapper;
+    private final CourseMapper courseMapper;
     private final ProblemMapper problemMapper;
     private final TestCaseMapper testCaseMapper;
 
@@ -65,6 +68,24 @@ public class StudentAssignmentService {
                         AssignmentStatus.of(now, a.getStartAt(), a.getDueAt(), a.getLateDays()).name()))
                 .collect(Collectors.toList()));
         return views;
+    }
+
+    /** 学生作业上下文：深链页头（课程名/作业名/状态/时间/题数）。已发布 + 已选课即可读，不要求已开始。 */
+    public AssignmentViews.StudentAssignmentHeader header(long studentUid, long assignmentId) {
+        Assignment a = assignmentMapper.selectById(assignmentId);
+        if (a == null || !Boolean.TRUE.equals(a.getIsPublished())) {
+            throw new BizException(ErrorCode.NOT_FOUND, "作业不存在");
+        }
+        assertEnrolled(studentUid, a.getCourseId());
+        Course course = courseMapper.selectById(a.getCourseId());
+        Long count = assignmentProblemMapper.selectCount(new LambdaQueryWrapper<AssignmentProblem>()
+                .eq(AssignmentProblem::getAssignmentId, assignmentId));
+        LocalDateTime now = LocalDateTime.now();
+        return new AssignmentViews.StudentAssignmentHeader(
+                a.getCourseId(), course != null ? course.getName() : "", a.getId(), a.getTitle(),
+                AssignmentStatus.of(now, a.getStartAt(), a.getDueAt(), a.getLateDays()).name(),
+                a.getStartAt(), a.getDueAt(), a.getLateDays(),
+                count == null ? 0L : count);
     }
 
     /** 作业题目列表：三级门 已选课→已发布→已过 start_at；隐藏点零进列表 */
