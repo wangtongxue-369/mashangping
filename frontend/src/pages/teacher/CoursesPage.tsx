@@ -86,7 +86,7 @@ export default function CoursesPage() {
       dataIndex: 'name',
       key: 'name',
       render: (_, course) => (
-        <Link to={`/teacher/courses/${course.id}/students`}>{course.name}</Link>
+        <Link to={`/teacher/courses/${course.id}`}>{course.name}</Link>
       ),
     },
     { title: '学期', dataIndex: 'term', key: 'term' },

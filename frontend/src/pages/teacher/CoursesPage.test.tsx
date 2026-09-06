@@ -88,7 +88,7 @@ describe('CoursesPage', () => {
     expect(await screen.findByText('线性代数')).toBeTruthy();
     expect(screen.getByText('2026秋')).toBeTruthy();
     const link = screen.getByRole('link', { name: '线性代数' });
-    expect(link.getAttribute('href')).toBe('/teacher/courses/7/students');
+    expect(link.getAttribute('href')).toBe('/teacher/courses/7');
   });
 
   it('无 token 时经 ProtectedRoute 重定向 /login，课程页不渲染且不发请求', async () => {

@@ -3,20 +3,20 @@ import { AppstoreOutlined, BookOutlined, LogoutOutlined } from '@ant-design/icon
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/useAuth';
 
-const { Sider, Header, Content } = Layout;
+const { Header, Content } = Layout;
 
 const MENU_ITEMS = [
   { key: '/teacher/courses', icon: <AppstoreOutlined />, label: '课程' },
   { key: '/teacher/problems', icon: <BookOutlined />, label: '题库' },
 ];
 
-/** 教师端主框架：Sider 菜单 + Header + 内容区 <Outlet/>。 */
+/** 教师端主框架：白色顶栏（品牌 + 导航 + 用户名/退出）+ 浅灰内容区（与学生端观感一致）。 */
 export default function TeacherLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
-  // 子页（学生名单/题目详情）也保持所属菜单高亮。
+  // 子页（学生名单/作业/成绩册/查重）保持所属菜单高亮。
   const selectedKey = location.pathname.startsWith('/teacher/courses')
     ? '/teacher/courses'
     : location.pathname.startsWith('/teacher/problems')
@@ -24,39 +24,54 @@ export default function TeacherLayout() {
       : location.pathname;
 
   return (
-    <Layout style={{ minHeight: '100vh' }}>
-      <Sider collapsible theme="dark" width={200}>
-        <div style={{ height: 32, margin: 16, color: '#fff', fontSize: 16, fontWeight: 600, textAlign: 'center' }}>
+    <Layout style={{ minHeight: '100vh', background: '#f4f5f7' }}>
+      <Header
+        style={{
+          position: 'sticky',
+          top: 0,
+          zIndex: 20,
+          background: '#fff',
+          borderBottom: '1px solid #e6e8eb',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 28,
+          paddingInline: 28,
+          height: 56,
+          lineHeight: '56px',
+        }}
+      >
+        <div
+          style={{
+            color: '#1677ff',
+            fontSize: 18,
+            fontWeight: 700,
+            cursor: 'pointer',
+            whiteSpace: 'nowrap',
+            userSelect: 'none',
+          }}
+          onClick={() => navigate('/teacher/courses')}
+        >
           码上评
         </div>
         <Menu
-          theme="dark"
-          mode="inline"
+          mode="horizontal"
           selectedKeys={[selectedKey]}
           items={MENU_ITEMS}
           onClick={({ key }) => navigate(key)}
+          style={{ flex: 1, minWidth: 0, borderBottom: 'none', fontWeight: 500 }}
         />
-      </Sider>
-      <Layout>
-        <Header
-          style={{
-            background: '#fff',
-            display: 'flex',
-            justifyContent: 'flex-end',
-            alignItems: 'center',
-            gap: 16,
-            paddingInline: 24,
-          }}
-        >
-          <span>{user?.realName || user?.username || ''}</span>
-          <a onClick={logout} title="退出登录">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <span style={{ color: '#1f2329', fontSize: 14 }}>{user?.realName || user?.username || ''}</span>
+          <a onClick={logout} title="退出登录" style={{ color: '#6b7280' }}>
             <LogoutOutlined />
           </a>
-        </Header>
-        <Content style={{ margin: 16 }}>
+        </div>
+      </Header>
+      <Content>
+        <div className="msp-shell-content">
           <Outlet />
-        </Content>
-      </Layout>
+        </div>
+      </Content>
     </Layout>
   );
 }
