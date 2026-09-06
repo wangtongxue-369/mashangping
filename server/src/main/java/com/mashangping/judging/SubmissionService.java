@@ -20,6 +20,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
@@ -91,11 +93,22 @@ public class SubmissionService {
         task.setRetryCount(0);
         judgeTaskMapper.insert(task);
 
-        // ⑦ 事务内触发 dispatchAsync：此刻事务未提交，调度线程跨连接不可见本行本轮抢不到；
-        //    领取以 status='PENDING' 原子 UPDATE 保证并发安全，唤醒缺漏由定时器兜底
+        // ⑦ 唤醒调度器须在事务提交之后：事务内同步 dispatch 会让调度轮询跑在本线程/本连接上，
+        //    能看到未提交的 judge_task 并抢单，但 worker 线程（独立连接）读不到未提交的 submission，
+        //    导致「problem vanished → 永久 FAIL」。改为 afterCommit 唤醒；缺漏仍由 1s 定时器兜底。
         JudgeDispatcher dispatcher = dispatcherProvider.getIfAvailable();
         if (dispatcher != null) {
-            dispatcher.dispatchAsync();
+            if (TransactionSynchronizationManager.isSynchronizationActive()) {
+                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        dispatcher.dispatchAsync();
+                    }
+                });
+            } else {
+                // 无活动事务（理论不达此路径）：直接异步唤醒，跨连接不可见即留给定时器兜底
+                dispatcher.dispatchAsync();
+            }
         }
 
         // ⑧ 受理回执
