@@ -175,6 +175,11 @@ public class GradebookService {
                 s.getStatus(), samples, masked);
     }
 
+    /** 导出文件名（带作业名，供 RFC5987 Content-Disposition 下发）；作业归属校验复用 getOwned */
+    public String csvFileName(long teacherUid, long assignmentId) {
+        return "gradebook-" + assignmentService.getOwned(teacherUid, assignmentId).getTitle() + ".csv";
+    }
+
     /** CSV 导出：UTF-8 BOM + 未做=0 + RFC4180 转义 + 公式注入前缀防御 */
     public byte[] csv(long teacherUid, long assignmentId) {
         GradebookView view = gradebook(teacherUid, assignmentId);

@@ -14,19 +14,25 @@ import com.mashangping.judging.Submission;
 import com.mashangping.judging.SubmissionMapper;
 import com.mashangping.problem.Problem;
 import com.mashangping.problem.ProblemMapper;
+import com.mashangping.security.JwtService;
 import com.mashangping.user.User;
 import com.mashangping.user.UserMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 class GradebookCsvTest extends IntegrationTestBase {
 
+    @Autowired JwtService jwtService;
     @Autowired GradebookService gradebookService;
     @Autowired UserMapper userMapper;
     @Autowired CourseMapper courseMapper;
@@ -117,5 +123,15 @@ class GradebookCsvTest extends IntegrationTestBase {
         assertThat(csv).contains("\"'=SUM(A1),陷阱\"\"\"");
         assertThat(csv).contains("S_M");
         // total 0，单题未做 → 0
+    }
+
+    @Test
+    void csv_content_disposition_filename_includes_assignment_title() throws Exception {
+        // 计划10：CSV 文件名带作业名（RFC5987 filename*=UTF-8''），「CSV作」→ UTF-8 百分号编码
+        mockMvc.perform(get("/api/assignments/{id}/gradebook/csv", assignmentId)
+                        .header("Authorization", bearer(jwtService, teacherUid, "gb_t_c1", "TEACHER")))
+                .andExpect(status().isOk())
+                .andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION,
+                        org.hamcrest.Matchers.containsString("filename*=UTF-8''gradebook-CSV%E4%BD%9C.csv")));
     }
 }

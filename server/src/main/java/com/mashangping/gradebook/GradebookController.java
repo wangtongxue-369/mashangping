@@ -48,10 +48,13 @@ public class GradebookController {
     public ResponseEntity<byte[]> csv(@AuthenticationPrincipal TokenPayload me,
                                       @PathVariable long assignmentId) {
         byte[] bytes = gradebookService.csv(me.uid(), assignmentId);
+        // 文件名带作业名（RFC5987 filename*）：中文可被浏览器正确下载，ASCII 兜底名防旧客户端乱码。
+        String fileName = gradebookService.csvFileName(me.uid(), assignmentId);
+        String encoded = java.net.URLEncoder.encode(fileName, StandardCharsets.UTF_8).replace("+", "%20");
         return ResponseEntity.ok()
                 .contentType(new MediaType("text", "csv", StandardCharsets.UTF_8))
                 .header(HttpHeaders.CONTENT_DISPOSITION,
-                        "attachment; filename=gradebook-" + assignmentId + ".csv")
+                        "attachment; filename=\"gradebook.csv\"; filename*=UTF-8''" + encoded)
                 .body(bytes);
     }
 
