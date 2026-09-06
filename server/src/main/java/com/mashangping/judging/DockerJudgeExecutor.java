@@ -140,21 +140,21 @@ public class DockerJudgeExecutor implements JudgeExecutor {
         Integer t = r.timedOut() ? null : (int) Math.min(r.elapsedMs(), Integer.MAX_VALUE);
         if (r.timedOut()) {
             return new PointOutcome(wc.pointIndex(), wc.testCaseId(),
-                    Submission.STATUS_TLE, null, null, null);
+                    Submission.STATUS_TLE, null, null, null, null);
         }
         Integer exit = r.exitCode();
         if (exit != null && exit == 124) {                      // timeout 杀掉=超时
             return new PointOutcome(wc.pointIndex(), wc.testCaseId(),
-                    Submission.STATUS_TLE, t, null, null);
+                    Submission.STATUS_TLE, t, null, null, null);
         }
         if (exit != null && exit == 137) {                      // cgroup OOM 击杀
             return new PointOutcome(wc.pointIndex(), wc.testCaseId(),
-                    Submission.STATUS_MLE, t, null, null);
+                    Submission.STATUS_MLE, t, null, null, null);
         }
         if (exit == null || exit != 0) {
             return new PointOutcome(wc.pointIndex(), wc.testCaseId(),
                     Submission.STATUS_RE, t, null,
-                    r.stderr() == null ? "" : tailLines(r.stderr(), 2000));
+                    r.stderr() == null ? "" : tailLines(r.stderr(), 2000), null);
         }
         // 规格回显语义（§6）：逐点结束后单发一次 stats 取 cgroup usage 叠加进本次峰值。
         // 比持续流式采样便宜且足够；JAVA 底座基线会抬高读数——显示口径为容器 RSS，教学够用。
@@ -162,9 +162,12 @@ public class DockerJudgeExecutor implements JudgeExecutor {
         boolean overflow = r.stdoutTruncated();                 // 防刷输出硬上限
         boolean match = !overflow
                 && OutputComparator.compare(wc.expectedOutput(), r.stdout());
+        // 计划10：WA 时写回该点实际输出尾段（≤2000），供样例点「你的输出」与教师隐藏点诊断；
+        // 溢出/AC 不写回（输出不可信或无需诊断）。
+        String actual = (match || overflow) ? null : tailLines(r.stdout(), 2000);
         return new PointOutcome(wc.pointIndex(), wc.testCaseId(),
                 match ? Submission.STATUS_AC : Submission.STATUS_WA,
-                t, sampledPeakMb.get(), null);
+                t, sampledPeakMb.get(), null, actual);
     }
 
     /** 单发 stats 采样（no-stream），叠加维护本提交的内存峰值(MB)；失败静默 */

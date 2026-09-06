@@ -14,10 +14,10 @@ public final class StudentSubmissionViews {
                           String language, LocalDateTime submittedAt) {
     }
 
-    /** 样例点全量视图（规格 §9 七字段：RE stderr 仅样例点下发） */
+    /** 样例点全量视图（规格 §9 七字段：RE stderr 仅样例点下发；actualOutput=WA「你的输出」，仅样例点） */
     public record SamplePoint(int pointIndex, String status, Integer timeUsedMs,
                               Integer memoryUsedMb, String input, String expectedOutput,
-                              String message) {
+                              String message, String actualOutput) {
     }
 
     /** 隐藏点瘦视图：除这四个字段外不携带任何内容 */

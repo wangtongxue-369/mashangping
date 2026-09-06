@@ -46,4 +46,15 @@ class JudgeSchemaTest extends IntegrationTestBase {
                 Long.class);
         assertThat(uk).isGreaterThan(0L);
     }
+
+    @Test
+    void judge_detail_has_actual_output_column() {
+        // 计划10 V7：judge_detail.actual_output（可空 MEDIUMTEXT），实体↔DDL 钉死
+        Long cols = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM information_schema.columns "
+                        + "WHERE table_schema = DATABASE() AND table_name = 'judge_detail' "
+                        + "AND column_name = 'actual_output' AND IS_NULLABLE = 'YES'",
+                Long.class);
+        assertThat(cols).isEqualTo(1L);
+    }
 }

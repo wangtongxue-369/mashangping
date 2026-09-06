@@ -18,4 +18,6 @@ public class JudgeDetail {
     private Integer timeUsedMs;
     private Integer memoryUsedMb;
     private String message;
+    /** 该点程序实际输出尾段：WA 时写回，样例点学生可读，隐藏点仅教师属主可读 */
+    private String actualOutput;
 }

@@ -140,7 +140,7 @@ class TeacherSubmissionTest extends IntegrationTestBase {
     }
 
     @Test
-    void detail_samples_full_hidden_points_masked() throws Exception {
+    void detail_samples_full_and_hidden_points_full_for_owner() throws Exception {
         String body = detailBody(teacherUid, "gb_t_a2", acSubmissionId);
         Map<String, Object> root = objectMapper.readValue(body, Map.class);
         @SuppressWarnings("unchecked")
@@ -157,10 +157,11 @@ class TeacherSubmissionTest extends IntegrationTestBase {
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> masked = (List<Map<String, Object>>) data.get("maskedPoints");
         assertThat(masked).hasSize(1);
-        assertThat(masked.get(0)).doesNotContainKey("message");
-        assertThat(masked.get(0)).doesNotContainKey("input");
-        assertThat(masked.get(0)).doesNotContainKey("expectedOutput");
         assertThat(masked.get(0).get("status")).isEqualTo("AC");
+        // 计划10：教师为题目属主，隐藏点也下发完整诊断（输入/预期/错误信息），零泄漏仅约束学生端
+        assertThat(masked.get(0).get("input")).isEqualTo("9\n");
+        assertThat(masked.get(0).get("expectedOutput")).isEqualTo("10\n");
+        assertThat(masked.get(0).get("message")).isEqualTo("隐藏点stderr");
     }
 
     @Test

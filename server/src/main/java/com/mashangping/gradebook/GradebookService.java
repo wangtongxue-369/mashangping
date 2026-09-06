@@ -154,15 +154,22 @@ public class GradebookService {
                             d.getTimeUsedMs(), d.getMemoryUsedMb(),
                             tc != null ? tc.getInput() : null,
                             tc != null ? tc.getExpectedOutput() : null,
-                            d.getMessage());
+                            d.getMessage(), d.getActualOutput());
                 })
                 .toList();
+        // 教师属主完整诊断：隐藏点同样下发输入/预期/错误信息/实际输出（零泄漏仅约束学生端）
         List<TeacherSubmissionRow.MaskedPoint> masked = details.stream()
                 .filter(d -> !caseById.containsKey(d.getTestCaseId())
                         || !Boolean.TRUE.equals(caseById.get(d.getTestCaseId()).getIsSample()))
-                .map(d -> new TeacherSubmissionRow.MaskedPoint(
-                        d.getPointIndex(), d.getStatus(),
-                        d.getTimeUsedMs(), d.getMemoryUsedMb()))
+                .map(d -> {
+                    TestCase tc = caseById.get(d.getTestCaseId());
+                    return new TeacherSubmissionRow.MaskedPoint(
+                            d.getPointIndex(), d.getStatus(),
+                            d.getTimeUsedMs(), d.getMemoryUsedMb(),
+                            tc != null ? tc.getInput() : null,
+                            tc != null ? tc.getExpectedOutput() : null,
+                            d.getMessage(), d.getActualOutput());
+                })
                 .toList();
         return new TeacherSubmissionRow.Detail(s.getId(), s.getCode(), s.getLanguage(),
                 s.getStatus(), samples, masked);

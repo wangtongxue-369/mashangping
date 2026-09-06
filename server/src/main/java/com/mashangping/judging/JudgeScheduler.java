@@ -286,6 +286,7 @@ public class JudgeScheduler implements JudgeDispatcher, ApplicationRunner {
                 d.setTimeUsedMs(o.timeUsedMs());
                 d.setMemoryUsedMb(o.memoryUsedMb());
                 d.setMessage(truncate(o.message(), 2000));
+                d.setActualOutput(truncate(o.actualOutput(), 2000));
                 detailMapper.insert(d);
             }
             submissionMapper.update(null, new LambdaUpdateWrapper<Submission>()

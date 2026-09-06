@@ -142,7 +142,7 @@ class JudgeQueueFlowTest extends IntegrationTestBase {
         Submission s = seedPendingSubmission();
         stub.behavior = (work, sink) ->
                 sink.point(new PointOutcome(1, work.cases().get(0).testCaseId(),
-                        "AC", 10, 25, null));
+                        "AC", 10, 25, null, null));
         JudgeScheduler scheduler = newScheduler(3);
         scheduler.dispatchAsync();
         awaitTerminal(s.getId(), "AC", 6000);
@@ -152,6 +152,24 @@ class JudgeQueueFlowTest extends IntegrationTestBase {
                 .eq(JudgeDetail::getSubmissionId, s.getId()));
         assertThat(details).hasSize(1);
         assertThat(details.get(0).getStatus()).isEqualTo("AC");
+    }
+
+    @Test
+    void wa_point_persists_actual_output_for_diagnosis() throws Exception {
+        // 计划10：WA 点把实际输出尾段落库 judge_detail.actual_output（样例点「你的输出」/教师隐藏点诊断）
+        Submission s = seedPendingSubmission();
+        stub.behavior = (work, sink) ->
+                sink.point(new PointOutcome(1, work.cases().get(0).testCaseId(),
+                        "WA", 10, 25, null, "我的实际输出\n第二行"));
+        JudgeScheduler scheduler = newScheduler(3);
+        scheduler.dispatchAsync();
+        awaitTerminal(s.getId(), "WA", 6000);
+        List<JudgeDetail> details = judgeDetailMapper.selectList(new LambdaQueryWrapper<JudgeDetail>()
+                .eq(JudgeDetail::getSubmissionId, s.getId()));
+        assertThat(details).hasSize(1);
+        assertThat(details.get(0).getStatus()).isEqualTo("WA");
+        assertThat(details.get(0).getActualOutput()).isEqualTo("我的实际输出\n第二行");
+        assertThat(details.get(0).getMessage()).isNull();
     }
 
     @Test
@@ -184,7 +202,7 @@ class JudgeQueueFlowTest extends IntegrationTestBase {
         submissionMapper.updateById(s);
 
         stub.behavior = (work, sink) ->
-                sink.point(new PointOutcome(1, work.cases().get(0).testCaseId(), "AC", 10, 25, null));
+                sink.point(new PointOutcome(1, work.cases().get(0).testCaseId(), "AC", 10, 25, null, null));
         newScheduler(3).dispatchAsync();
         awaitTerminal(s.getId(), "AC", 6000);
         assertThat(submissionOf(s.getId()).getScore()).isEqualTo(9);
@@ -219,7 +237,7 @@ class JudgeQueueFlowTest extends IntegrationTestBase {
         stub.behavior = (work, sink) -> {
             for (JudgeWork.WorkCase wc : work.cases()) {
                 sink.point(new PointOutcome(wc.pointIndex(), wc.testCaseId(),
-                        wc.pointIndex() == 1 ? "AC" : "TLE", 1000, 30, null));
+                        wc.pointIndex() == 1 ? "AC" : "TLE", 1000, 30, null, null));
             }
         };
         newScheduler(3).dispatchAsync();
@@ -263,7 +281,7 @@ class JudgeQueueFlowTest extends IntegrationTestBase {
                 throw new InfraBrokenException("daemon gone", null);
             }
             sink.point(new PointOutcome(1, work.cases().get(0).testCaseId(),
-                    "AC", 5, 20, null));
+                    "AC", 5, 20, null, null));
         };
         JudgeScheduler scheduler = newScheduler(3);
         scheduler.dispatchAsync();
@@ -419,7 +437,7 @@ class JudgeQueueFlowTest extends IntegrationTestBase {
 
         Behavior behavior = (work, sink) ->
                 sink.point(new PointOutcome(1, work.cases().get(0).testCaseId(),
-                        "AC", 10, 25, null));
+                        "AC", 10, 25, null, null));
 
         volatile boolean healthy = true;
         java.util.function.Consumer<AtomicInteger> concurrentProbe;   // 参数为当前在飞计数
