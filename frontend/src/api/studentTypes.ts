@@ -134,3 +134,23 @@ export interface JudgeProgressEvent {
   passedCount: number | null;
   totalCount: number | null;
 }
+
+/** 公开题库摘要（PracticeViews.Summary）：自由练习列表行。 */
+export interface PracticeSummary {
+  id: number;
+  title: string;
+  languages: string[];
+  timeLimitMs: number;
+  memoryLimitMb: number;
+}
+
+/** 公开题详情（PracticeViews.Detail）：MD 题面 + 样例点完整输入输出（练习无隐藏点概念）。 */
+export interface PracticeDetail {
+  id: number;
+  title: string;
+  description: string;
+  languages: string[];
+  timeLimitMs: number;
+  memoryLimitMb: number;
+  samples: StudentSample[];
+}
