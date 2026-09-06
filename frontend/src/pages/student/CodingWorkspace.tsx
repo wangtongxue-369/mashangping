@@ -20,7 +20,14 @@ import { client } from '../../api/client';
 import { useAuth } from '../../auth/useAuth';
 import { connect } from '../../api/ws';
 import MarkdownView from '../../components/MarkdownView';
-import type { MaskedPoint, SamplePoint, StudentSample, SubmissionDetail, SubmissionSummary } from '../../api/studentTypes';
+import type {
+  AssignmentStatus,
+  MaskedPoint,
+  SamplePoint,
+  StudentSample,
+  SubmissionDetail,
+  SubmissionSummary,
+} from '../../api/studentTypes';
 import { LANGUAGE_LABEL, LANGUAGE_MONACO, SUBMIT_STATUS, fmtDateTime, statusMeta } from './constants';
 
 /** 学生提交历史锚（作业/练习互斥）。 */
@@ -30,6 +37,14 @@ export type HistoryAnchor = { assignmentProblemId: number } | { problemId: numbe
 export type SubmitTarget =
   | { type: 'assignment'; assignmentProblemId: number }
   | { type: 'practice'; problemId: number };
+
+/** 作业上下文（H5 状态贯穿作答）：status/dueAt/lateDays 门禁展示，fullScore 为本题满分。 */
+export interface AssignmentMeta {
+  status: AssignmentStatus;
+  dueAt: string;
+  lateDays: number;
+  fullScore: number;
+}
 
 export interface CodingWorkspaceProps {
   title: string;
@@ -41,6 +56,8 @@ export interface CodingWorkspaceProps {
   submitTarget: SubmitTarget;
   historyAnchor: HistoryAnchor;
   typeTag?: string;
+  /** 仅作业模式传入；缺省视为练习模式（无截止/迟交/满分语义）。 */
+  assignmentMeta?: AssignmentMeta;
 }
 
 const STARTER: Record<string, string> = {
@@ -53,8 +70,10 @@ const STARTER: Record<string, string> = {
 /**
  * 牛客式双栏答题工作区（作业/练习共用）：
  * - 左栏「题目描述 / 提交记录」Tab：Markdown 题面 + 样例点输入输出；提交记录表格（点行看详情抽屉）
- * - 右栏编码区：语言选择 + 提交按钮 + Monaco（深色主题） + 实时判题进度条
- * - 详情抽屉：样例点完整输入输出；隐藏点仅状态/用时/内存（零泄漏红线）
+ * - 右栏编码区：语言选择（按语言分别保留草稿）+ 提交按钮 + Monaco（深色主题） + 实时判题进度条
+ * - 作业模式状态贯穿：CLOSED 禁提交；LATE_WINDOW 提交前迟交确认；截止由上级页倒计时呈现
+ * - 得分语义：作业显示「最高分/满分」（0 红/部分橙/满分绿）；练习隐藏得分列，改显「已通过 N 次」
+ * - 详情抽屉：样例点完整输入输出（含 WA「你的输出」）；隐藏点仅状态/用时/内存（零泄漏红线）
  */
 export default function CodingWorkspace({
   title,
@@ -66,13 +85,23 @@ export default function CodingWorkspace({
   submitTarget,
   historyAnchor,
   typeTag,
+  assignmentMeta,
 }: CodingWorkspaceProps) {
   const { token } = useAuth();
-  const { message } = AntApp.useApp();
+  const { message, modal } = AntApp.useApp();
   const queryClient = useQueryClient();
 
-  const [language, setLanguage] = useState(languages[0] ?? 'C');
-  const [code, setCode] = useState(() => STARTER[languages[0] ?? 'C'] ?? '');
+  const isAssignment = submitTarget.type === 'assignment';
+  const status = assignmentMeta?.status;
+
+  const initialLanguage = languages[0] ?? 'C';
+  const [language, setLanguage] = useState(initialLanguage);
+  // 按语言分别保留编辑内容：切换语言不清空，切回保留（草稿在会话内存态）。
+  const [codeByLang, setCodeByLang] = useState<Record<string, string>>(() => ({
+    [initialLanguage]: STARTER[initialLanguage] ?? '',
+  }));
+  const code = codeByLang[language] ?? STARTER[language] ?? '';
+
   const [detailId, setDetailId] = useState<number | null>(null);
   const [live, setLive] = useState<string | null>(null);
   const latestIdRef = useRef<number | null>(null);
@@ -87,7 +116,12 @@ export default function CodingWorkspace({
     return { problemId: historyAnchor.problemId };
   }, [historyAnchor]);
 
-  const { data: history, isLoading: historyLoading } = useQuery<SubmissionSummary[]>({
+  const {
+    data: history,
+    isLoading: historyLoading,
+    isError: historyError,
+    refetch: refetchHistory,
+  } = useQuery<SubmissionSummary[]>({
     queryKey: historyQueryKey,
     queryFn: async () => {
       const resp = await client.get('/submissions/my', { params: historyParams });
@@ -101,6 +135,9 @@ export default function CodingWorkspace({
     return scores.length === 0 ? null : Math.max(...scores);
   }, [history]);
 
+  /** 已通过次数（练习正反馈：练习不计分，按 AC 次数衡量）。 */
+  const passedCount = useMemo(() => (history ?? []).filter((h) => h.status === 'AC').length, [history]);
+
   const { data: detail, isLoading: detailLoading } = useQuery<SubmissionDetail>({
     queryKey: ['submissionDetail', detailId],
     queryFn: async () => {
@@ -108,6 +145,8 @@ export default function CodingWorkspace({
       return resp.data.data;
     },
     enabled: detailId != null,
+    // 重开详情强制拉新，避免 FINISHED 后 30s 缓存窗口内看到旧结果。
+    staleTime: 0,
   });
 
   const submit = useMutation({
@@ -130,7 +169,7 @@ export default function CodingWorkspace({
     },
   });
 
-  // 判题进度实时推送：best-effort，只消费「最近一次提交」的事件；FINISHED 后刷新历史。
+  // 判题进度实时推送：best-effort，只消费「最近一次提交」的事件；FINISHED 后刷新历史与已开详情。
   useEffect(() => {
     if (!token) return undefined;
     return connect({
@@ -150,6 +189,7 @@ export default function CodingWorkspace({
           case 'FINISHED':
             setLive(`评测完成：${statusMeta(SUBMIT_STATUS, e.finalStatus ?? '').label}`);
             queryClient.invalidateQueries({ queryKey: historyQueryKey });
+            queryClient.invalidateQueries({ queryKey: ['submissionDetail'] });
             break;
           default:
             break;
@@ -159,14 +199,47 @@ export default function CodingWorkspace({
   }, [token, anchorKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const refreshHistory = () => {
+    refetchHistory();
     queryClient.invalidateQueries({ queryKey: historyQueryKey });
   };
 
   const onLanguageChange = (next: string) => {
     setLanguage(next);
-    if (!code) {
-      setCode(STARTER[next] ?? '');
+  };
+
+  const onCodeChange = (next?: string) => {
+    setCodeByLang((prev) => ({ ...prev, [language]: next ?? '' }));
+  };
+
+  /** H5 + 模板守卫：CLOSED 由按钮禁用；LATE_WINDOW 迟交确认；空/原样模板确认。 */
+  const onSubmitClick = () => {
+    if (isAssignment && status === 'CLOSED') return;
+    const doSubmit = () => submit.mutate({ language, code });
+    if (isAssignment && status === 'LATE_WINDOW') {
+      modal.confirm({
+        title: '已过截止时间',
+        content: '当前处于迟交宽限期：本次提交将标记为「迟交」，确定提交吗？',
+        okText: '仍然提交',
+        cancelText: '取消',
+        onOk: doSubmit,
+      });
+      return;
     }
+    if (!code.trim()) {
+      message.warning('代码为空，无法提交');
+      return;
+    }
+    if (code === (STARTER[language] ?? '')) {
+      modal.confirm({
+        title: '仍是模板代码',
+        content: '编辑器里还是初始模板代码，确定提交吗？',
+        okText: '确定提交',
+        cancelText: '再写写',
+        onOk: doSubmit,
+      });
+      return;
+    }
+    doSubmit();
   };
 
   const statusTag = (s: string) => {
@@ -174,27 +247,68 @@ export default function CodingWorkspace({
     return <Tag color={m.color}>{m.label}</Tag>;
   };
 
+  const scoreTag = () => {
+    if (!isAssignment) {
+      return passedCount > 0 ? (
+        <Tag color="green" style={{ marginInlineEnd: 0 }}>
+          已通过 {passedCount} 次
+        </Tag>
+      ) : null;
+    }
+    if (bestScore == null) {
+      return (
+        <Tag style={{ marginInlineEnd: 0 }} color="default">
+          我的最高分：—
+        </Tag>
+      );
+    }
+    const full = assignmentMeta?.fullScore;
+    const label = full != null ? `我的最高分：${bestScore} / ${full}` : `我的最高分：${bestScore}`;
+    const color =
+      bestScore === 0 ? 'red' : full != null && bestScore >= full ? 'green' : full != null ? 'orange' : 'green';
+    return (
+      <Tag style={{ marginInlineEnd: 0 }} color={color}>
+        {label}
+      </Tag>
+    );
+  };
+
   const historyColumns: ColumnsType<SubmissionSummary> = [
     { title: '提交', dataIndex: 'id', width: 64 },
     { title: '状态', dataIndex: 'status', render: (s: string) => statusTag(s) },
-    { title: '得分', dataIndex: 'score', width: 64, render: (v: number | null) => (v == null ? '—' : String(v)) },
+    ...(isAssignment
+      ? [{ title: '得分', dataIndex: 'score', width: 64, render: (v: number | null) => (v == null ? '—' : String(v)) }]
+      : []),
+    {
+      title: '迟交',
+      dataIndex: 'isLate',
+      width: 64,
+      render: (v: boolean) => (v ? <Tag color="orange">迟交</Tag> : '—'),
+    },
     { title: '时间', dataIndex: 'submittedAt', render: (v: string) => fmtDateTime(v) },
   ];
 
   const statementPane = (
     <div className="solve-statement">
       <h2 style={{ margin: '0 0 8px', fontSize: 18 }}>{title}</h2>
-      <Space size={8} wrap style={{ marginBottom: 10 }}>
+      <Space size={8} wrap style={{ marginBottom: 4 }}>
         <Tag color="blue" style={{ marginInlineEnd: 0 }}>
           {typeTag ?? (submitTarget.type === 'assignment' ? '作业题' : '自由练习')}
         </Tag>
         <span style={{ color: '#6b7280', fontSize: 13 }}>
           时间限制 {timeLimitMs}ms · 内存限制 {memoryLimitMb}MB
         </span>
-        <Tag style={{ marginInlineEnd: 0 }} color={bestScore == null ? 'default' : 'green'}>
-          我的最高分：{bestScore == null ? '—' : bestScore}
-        </Tag>
+        {scoreTag()}
       </Space>
+      {isAssignment ? (
+        <div style={{ color: '#9aa0a6', fontSize: 12, marginBottom: 8 }}>
+          作业题得分规则：通过全部测试点得该题满分，否则 0 分。
+        </div>
+      ) : (
+        <div style={{ color: '#9aa0a6', fontSize: 12, marginBottom: 8 }}>
+          自由练习不计分：以每次提交的「通过」状态为准。
+        </div>
+      )}
       <MarkdownView source={description} />
       {samples.length > 0 ? (
         <>
@@ -215,16 +329,24 @@ export default function CodingWorkspace({
 
   const historyPane = (
     <div style={{ maxHeight: 'calc(100vh - 260px)', overflowY: 'auto' }}>
-      <Table<SubmissionSummary>
-        rowKey="id"
-        size="small"
-        loading={historyLoading}
-        columns={historyColumns}
-        dataSource={history ?? []}
-        pagination={{ pageSize: 8, showSizeChanger: false }}
-        onRow={(row) => ({ onClick: () => setDetailId(row.id), style: { cursor: 'pointer' } })}
-        locale={{ emptyText: '还没有提交记录，快在右侧写第一段代码吧' }}
-      />
+      {historyError && !history ? (
+        <div style={{ padding: '32px 0' }}>
+          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="提交记录加载失败，请重试">
+            <Button onClick={refreshHistory}>重试</Button>
+          </Empty>
+        </div>
+      ) : (
+        <Table<SubmissionSummary>
+          rowKey="id"
+          size="small"
+          loading={historyLoading}
+          columns={historyColumns}
+          dataSource={history ?? []}
+          pagination={{ pageSize: 8, showSizeChanger: false }}
+          onRow={(row) => ({ onClick: () => setDetailId(row.id), style: { cursor: 'pointer' } })}
+          locale={{ emptyText: '还没有提交记录，快在右侧写第一段代码吧' }}
+        />
+      )}
     </div>
   );
 
@@ -239,6 +361,12 @@ export default function CodingWorkspace({
         <pre style={{ background: '#f5f5f5', padding: 8 }}>{p.input}</pre>
         <b>预期输出</b>
         <pre style={{ background: '#f5f5f5', padding: 8 }}>{p.expectedOutput}</pre>
+        {p.actualOutput != null ? (
+          <>
+            <b>你的输出</b>
+            <pre style={{ background: '#fff1f0', border: '1px solid #ffccc7', padding: 8 }}>{p.actualOutput}</pre>
+          </>
+        ) : null}
       </div>
     </div>
   );
@@ -248,6 +376,8 @@ export default function CodingWorkspace({
       第 {p.pointIndex + 1} 个测试点：{statusTag(p.status)} {p.timeUsedMs ?? '-'}ms / {p.memoryUsedMb ?? '-'}MB
     </div>
   );
+
+  const closed = isAssignment && status === 'CLOSED';
 
   return (
     <div className="solve-grid">
@@ -284,7 +414,18 @@ export default function CodingWorkspace({
           />
           <Button icon={<ReloadOutlined />} onClick={refreshHistory} title="刷新提交记录" />
           <div style={{ flex: 1 }} />
-          <Button type="primary" loading={submit.isPending} onClick={() => submit.mutate({ language, code })}>
+          {closed ? (
+            <Tag color="default" style={{ marginInlineEnd: 0 }}>
+              作业已截止，无法提交
+            </Tag>
+          ) : null}
+          <Button
+            type="primary"
+            disabled={closed}
+            loading={submit.isPending}
+            onClick={onSubmitClick}
+            title={closed ? '作业已截止，无法提交' : undefined}
+          >
             提交评测
           </Button>
         </div>
@@ -294,7 +435,7 @@ export default function CodingWorkspace({
             theme="vs-dark"
             language={LANGUAGE_MONACO[language] ?? 'plaintext'}
             value={code}
-            onChange={(v) => setCode(v ?? '')}
+            onChange={onCodeChange}
             options={{ fontSize: 14, minimap: { enabled: false }, scrollBeyondLastLine: false }}
           />
         </div>
@@ -312,7 +453,7 @@ export default function CodingWorkspace({
         </div>
       </div>
 
-      {/* 详情抽屉：样例点完整 / 隐藏点零泄漏 */}
+      {/* 详情抽屉：样例点完整（含 WA 你的输出）/ 隐藏点零泄漏 */}
       <Drawer
         title={detail ? `提交 #${detail.id} · ${statusTag(detail.status)}` : '提交详情'}
         width={Math.min(window.innerWidth || 800, 720)}
@@ -336,7 +477,9 @@ export default function CodingWorkspace({
               style={{ margin: '16px 0' }}
               items={[
                 { key: 'status', label: '状态', children: statusTag(detail.status) },
-                { key: 'score', label: '得分', children: detail.score == null ? '—' : String(detail.score) },
+                ...(isAssignment
+                  ? [{ key: 'score', label: '得分', children: detail.score == null ? '—' : String(detail.score) }]
+                  : []),
                 { key: 'passed', label: '通过', children: `${detail.passedCount ?? 0} / ${detail.totalCount ?? 0}` },
                 { key: 'time', label: '用时', children: detail.timeUsedMs == null ? '—' : `${detail.timeUsedMs}ms` },
                 { key: 'mem', label: '内存', children: detail.memoryUsedMb == null ? '—' : `${detail.memoryUsedMb}MB` },
@@ -346,7 +489,11 @@ export default function CodingWorkspace({
               ]}
             />
             <h4>测试点结果</h4>
-            {detail.samples.map((p) => sampleDesc(p))}
+            {detail.samples.length === 0 ? (
+              <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="无样例点信息" />
+            ) : (
+              detail.samples.map((p) => sampleDesc(p))
+            )}
             <h4>隐藏测试点（仅展示状态/用时/内存，不展示输入输出）</h4>
             {detail.maskedPoints.length === 0 ? (
               <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="无隐藏测试点信息" />

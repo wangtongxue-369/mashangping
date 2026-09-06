@@ -1,14 +1,19 @@
 import { useQuery } from '@tanstack/react-query';
-import { Button, Spin } from 'antd';
+import { Button, Space, Spin, Tag } from 'antd';
 import { useNavigate, useParams } from 'react-router-dom';
 import { client } from '../../api/client';
 import type { StudentProblemDetail } from '../../api/studentTypes';
 import CodingWorkspace from './CodingWorkspace';
+import { ASSIGN_STATUS, statusMeta } from './constants';
+import { useAssignmentHeader } from './context';
 
-/** 作业题目阅读 + 编码页：取题详情后交给双栏 CodingWorkspace（作业锚提交）。 */
+/** 作业题目阅读 + 编码页：取题详情 + 作业上下文头后交给双栏 CodingWorkspace（作业锚提交，状态贯穿作答）。 */
 export default function CodingPage() {
   const { courseId, assignmentId, problemId } = useParams();
   const navigate = useNavigate();
+
+  const { data: header, isError: headerError } = useAssignmentHeader(courseId, assignmentId);
+  const status = header?.status;
 
   const { data: detail, isLoading, isError } = useQuery<StudentProblemDetail>({
     queryKey: ['assignmentProblemDetail', courseId, assignmentId, problemId],
@@ -19,7 +24,8 @@ export default function CodingPage() {
     enabled: Boolean(courseId && assignmentId && problemId),
   });
 
-  if (isLoading) {
+  const loading = isLoading || (!detail && !isError);
+  if (loading) {
     return <Spin style={{ display: 'block', margin: '48px auto' }} />;
   }
   if (isError || !detail) {
@@ -35,7 +41,7 @@ export default function CodingPage() {
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
         <Button
           type="text"
           icon={<span>←</span>}
@@ -43,9 +49,19 @@ export default function CodingPage() {
         >
           题目列表
         </Button>
-        <span style={{ color: '#9aa0a6', fontSize: 13 }}>
-          {courseId && assignmentId ? `课程 ${courseId} / 作业 ${assignmentId}` : ''}
-        </span>
+      </div>
+      <div style={{ marginBottom: 12 }}>
+        <h2 className="msp-page-title" style={{ marginBottom: 2 }}>
+          {header ? `${header.title} · ${detail.title}` : detail.title}
+        </h2>
+        <Space size={10} wrap>
+          {header?.courseName ? <span style={{ color: '#6b7280', fontSize: 13 }}>{header.courseName}</span> : null}
+          {header ? (
+            <Tag color={statusMeta(ASSIGN_STATUS, header.status).color}>{statusMeta(ASSIGN_STATUS, header.status).label}</Tag>
+          ) : null}
+          {status === 'LATE_WINDOW' ? <Tag color="orange">宽限中：提交将标记为迟交</Tag> : null}
+          {status === 'CLOSED' ? <Tag color="default">已截止：仅可查看，不可提交</Tag> : null}
+        </Space>
       </div>
       <CodingWorkspace
         title={detail.title}
@@ -57,6 +73,16 @@ export default function CodingPage() {
         submitTarget={{ type: 'assignment', assignmentProblemId: detail.assignmentProblemId }}
         historyAnchor={{ assignmentProblemId: detail.assignmentProblemId }}
         typeTag="作业题"
+        assignmentMeta={
+          header && !headerError
+            ? {
+                status: header.status,
+                dueAt: header.dueAt,
+                lateDays: header.lateDays,
+                fullScore: detail.score,
+              }
+            : undefined
+        }
       />
     </div>
   );

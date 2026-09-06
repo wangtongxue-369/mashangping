@@ -57,7 +57,23 @@ export interface StudentSample {
   output: string;
 }
 
-/** 学生题目阅读视图（AssignmentViews.StudentProblemDetail）：MD 题面 + 样例集合。 */
+/**
+ * 学生作业上下文头（AssignmentViews.StudentAssignmentHeader，GET /api/assignments/{id} 学生分支）：
+ * 深链进入题目/编码页时提供课程名/作业名/状态/时间窗，作业题目数与状态在列表页复用。
+ */
+export interface StudentAssignmentHeader {
+  courseId: number;
+  courseName: string;
+  assignmentId: number;
+  title: string;
+  status: AssignmentStatus;
+  startAt: string;
+  dueAt: string;
+  lateDays: number;
+  problemCount: number;
+}
+
+/** 学生题目阅读视图（AssignmentViews.StudentProblemDetail）：MD 题面 + 题分(满分) + 样例集合。 */
 export interface StudentProblemDetail {
   assignmentProblemId: number;
   problemId: number;
@@ -66,6 +82,8 @@ export interface StudentProblemDetail {
   languages: string[];
   timeLimitMs: number;
   memoryLimitMb: number;
+  /** 该题满分（作业题由 AssignmentProblem.score 给出），用于「最高分/满分」语义展示。 */
+  score: number;
   samples: StudentSample[];
 }
 
@@ -82,7 +100,7 @@ export interface SubmissionSummary {
   submittedAt: string;
 }
 
-/** 样例点详情（完整输入输出，规格仅样例点下发）。 */
+/** 样例点详情（完整输入输出，规格仅样例点下发；actualOutput=WA 时后端写回的「你的输出」）。 */
 export interface SamplePoint {
   pointIndex: number;
   status: string;
@@ -91,6 +109,7 @@ export interface SamplePoint {
   input: string;
   expectedOutput: string;
   message: string;
+  actualOutput?: string | null;
 }
 
 /** 隐藏点瘦视图（零泄漏：除四字段外不携带任何内容）。 */
