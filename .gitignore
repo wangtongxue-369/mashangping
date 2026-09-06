@@ -11,3 +11,5 @@ logs/
 
 .tools/
 frontend/.npmrc
+
+.docker/

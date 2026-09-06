@@ -10,6 +10,7 @@ import com.github.dockerjava.core.DockerClientImpl;
 import com.github.dockerjava.httpclient5.ApacheDockerHttpClient;
 import com.github.dockerjava.transport.DockerHttpClient;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
@@ -31,6 +32,8 @@ public class DockerJudgeExecutor implements JudgeExecutor {
     private final JudgeProperties properties;
     private final DockerClient client;
 
+    /** 生产装配入口：Spring 自动从 properties 构造（无参+多构造器歧义，须显式 @Autowired 指明） */
+    @Autowired
     public DockerJudgeExecutor(JudgeProperties properties) {
         this(properties, defaultClient());
     }
