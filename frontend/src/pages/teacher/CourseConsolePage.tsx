@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Area, Column, Line, Pie } from '@ant-design/plots';
-import { Button, Card, Col, Empty, Row, Select, Spin, Statistic, Tag, Typography } from 'antd';
+import { Alert, Button, Card, Col, Empty, Row, Select, Spin, Statistic, Tag, Typography } from 'antd';
 import { TeamOutlined, FileTextOutlined, TrophyOutlined, WarningOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import { client } from '../../api/client';
@@ -14,6 +14,8 @@ import type {
   StatusCount,
   TimelinePoint,
 } from '../../api/analyticsTypes';
+import { useTeacherCourse } from './context';
+import CourseBreadcrumb from './CourseBreadcrumb';
 
 const STATUS_LABEL: Record<string, string> = {
   AC: '通过', WA: '答案错误', TLE: '超时', MLE: '内存超限',
@@ -45,6 +47,7 @@ function SectionCard({ title, extra, children }: { title: string; extra?: React.
 export default function CourseConsolePage() {
   const { courseId } = useParams<{ courseId: string }>();
   const navigate = useNavigate();
+  const course = useTeacherCourse(courseId);
   const [distAssignmentId, setDistAssignmentId] = useState<number | null>(null);
 
   const overview = useQuery<CourseOverview>({
@@ -88,11 +91,34 @@ export default function CourseConsolePage() {
   const ov = overview.data;
   const loading = overview.isLoading || trend.isLoading;
 
+  // H4：接口失败 ≠ 空数据——任一分析查询失败则顶部警示并提供重试，不静默渲染误导性的全 0 看板。
+  const failedQueries = [overview, trend, acRate, status, timeline, risk, distribution].filter(
+    (q) => q.isError,
+  );
+  // 概览卡缺数时取「—」（区别于真实 0）：接口失败与无数据不再混为一谈。
+  const ovNum = (v: number | undefined | null) => (ov ? (v ?? 0) : overview.isError ? '—' : 0);
+
   return (
     <div>
-      <Button onClick={() => navigate('/teacher/courses')}>← 全部课程</Button>
-      <h2 className="msp-page-title">课程工作台</h2>
-      <p className="msp-page-sub">课程数据看板与管理入口</p>
+      <CourseBreadcrumb courseId={Number(courseId)} courseName={course?.name} current="课程工作台" />
+      <h2 className="msp-page-title">{course?.name ? `${course.name} · 课程工作台` : '课程工作台'}</h2>
+      <p className="msp-page-sub">
+        课程数据看板与管理入口{course?.term ? ` · ${course.term}` : ''}
+      </p>
+
+      {failedQueries.length > 0 ? (
+        <Alert
+          type="error"
+          showIcon
+          style={{ marginBottom: 12 }}
+          message={`部分看板数据加载失败（${failedQueries.length} 项），对应图表已隐藏，请重试`}
+          action={
+            <Button size="small" onClick={() => failedQueries.forEach((q) => q.refetch())}>
+              重试
+            </Button>
+          }
+        />
+      ) : null}
 
       {loading ? (
         <Spin style={{ display: 'block', margin: '48px auto' }} />
@@ -100,13 +126,13 @@ export default function CourseConsolePage() {
         <>
           {/* 概览卡 */}
           <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-            <StatCard icon={<TeamOutlined />} label="在册学生" value={ov?.studentCount ?? 0} />
+            <StatCard icon={<TeamOutlined />} label="在册学生" value={ovNum(ov?.studentCount)} />
             <StatCard icon={<FileTextOutlined />} label="作业 / 已发布"
-              value={`${ov?.assignmentCount ?? 0} / ${ov?.publishedAssignmentCount ?? 0}`} />
+              value={`${ovNum(ov?.assignmentCount)} / ${ovNum(ov?.publishedAssignmentCount)}`} />
             <StatCard icon={<TrophyOutlined />} label="最近作业平均分"
-              value={ov?.latestAvg == null ? '—' : String(ov.latestAvg)} />
+              value={ov && ov.latestAvg != null ? String(ov.latestAvg) : '—'} />
             <StatCard icon={<WarningOutlined />} label="查重高疑似对"
-              value={ov?.highPlagiarismPairs ?? 0} danger={(ov?.highPlagiarismPairs ?? 0) > 0} />
+              value={ovNum(ov?.highPlagiarismPairs)} danger={(ov?.highPlagiarismPairs ?? 0) > 0} />
           </Row>
 
           {/* 业务入口 */}

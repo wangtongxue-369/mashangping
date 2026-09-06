@@ -106,10 +106,11 @@ export interface AssignmentProblemItem {
   sortOrder: number;
 }
 
-/** 教师作业详情（AssignmentViews.TeacherDetail）：全字段 + 已选题目清单。 */
+/** 教师作业详情（AssignmentViews.TeacherDetail）：全字段 + 课程名 + 已选题目清单。 */
 export interface AssignmentTeacherDetail {
   id: number;
   courseId: number;
+  courseName: string;
   title: string;
   description: string | null;
   startAt: string;

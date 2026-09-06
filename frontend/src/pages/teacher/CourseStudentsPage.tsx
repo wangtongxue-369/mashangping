@@ -16,11 +16,13 @@ import {
 } from 'antd';
 import type { TableProps } from 'antd';
 import type { UploadProps } from 'antd';
-import { ArrowLeftOutlined, PlusOutlined, UploadOutlined } from '@ant-design/icons';
+import { PlusOutlined, UploadOutlined } from '@ant-design/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { client, extractApiMessage } from '../../api/client';
 import type { ApiResponse, EnrollmentView, ImportResult, Page } from '../../api/types';
+import { useTeacherCourse } from './context';
+import CourseBreadcrumb from './CourseBreadcrumb';
 
 interface AddStudentForm {
   studentNo: string;
@@ -42,9 +44,9 @@ const STATUS_OPTIONS = [
 /** 课程学生名单页：分页列表 + 筛选 + 单人添加 + Excel 批量导入 + 移除。 */
 export default function CourseStudentsPage() {
   const { courseId } = useParams<{ courseId: string }>();
-  const navigate = useNavigate();
   const { message } = AntApp.useApp();
   const queryClient = useQueryClient();
+  const course = useTeacherCourse(courseId);
 
   const [page, setPage] = useState(1);
   const [size, setSize] = useState(20);
@@ -150,14 +152,7 @@ export default function CourseStudentsPage() {
 
   return (
     <Card
-      title={
-        <Space>
-          <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/teacher/courses')}>
-            返回
-          </Button>
-          <span>课程学生名单</span>
-        </Space>
-      }
+      title={course?.name ? `${course.name} · 学生名单` : '课程学生名单'}
       extra={
         <Space>
           <Upload {...importProps}>
@@ -176,6 +171,7 @@ export default function CourseStudentsPage() {
         </Space>
       }
     >
+      <CourseBreadcrumb courseId={Number(courseId)} courseName={course?.name} current="学生名单" />
       <Space style={{ marginBottom: 16 }} wrap>
         <Input.Search
           placeholder="搜索学号或姓名"

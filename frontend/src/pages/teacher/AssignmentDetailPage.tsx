@@ -12,7 +12,7 @@ import {
   Typography,
 } from 'antd';
 import type { TableProps } from 'antd';
-import { ArrowLeftOutlined, PlusOutlined } from '@ant-design/icons';
+import { PlusOutlined } from '@ant-design/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { client, extractApiMessage } from '../../api/client';
@@ -23,6 +23,7 @@ import type {
   CourseProblemView,
   Page,
 } from '../../api/types';
+import CourseBreadcrumb from './CourseBreadcrumb';
 
 /** 后端 AssignmentStatus 实时推算状态的中文展示。 */
 const STATUS_META: Record<string, { label: string; color?: string }> = {
@@ -168,7 +169,14 @@ export default function AssignmentDetailPage() {
       title: '题目',
       dataIndex: 'title',
       key: 'title',
-      render: (_, item) => <Link to={`/teacher/problems/${item.problemId}`}>{item.title}</Link>,
+      render: (_, item) => (
+        <Link
+          to={`/teacher/problems/${item.problemId}`}
+          state={{ fromAssignment: { courseId: detail?.courseId, assignmentId } }}
+        >
+          {item.title}
+        </Link>
+      ),
     },
     {
       title: '分值',
@@ -184,7 +192,15 @@ export default function AssignmentDetailPage() {
               precision={0}
               style={{ width: 90 }}
               value={draft ?? item.score}
-              onChange={(v) => setScoreDrafts((s) => ({ ...s, [item.problemId]: v ?? 0 }))}
+              // 清空即回退原值（删除草稿），避免「清空变 0 → 分值须在1~10000」校验噪声。
+              onChange={(v) =>
+                setScoreDrafts((s) => {
+                  const next = { ...s };
+                  if (v == null) delete next[item.problemId];
+                  else next[item.problemId] = v;
+                  return next;
+                })
+              }
             />
             <Button
               size="small"
@@ -243,22 +259,12 @@ export default function AssignmentDetailPage() {
   ];
 
   return (
-    <Card
-      title={
-        <Space>
-          <Link to={detail ? `/teacher/courses/${detail.courseId}/assignments` : '/teacher/courses'}>
-            <Button size="small" type="text" icon={<ArrowLeftOutlined />}>
-              返回作业列表
-            </Button>
-          </Link>
-          <Link to={detail ? `/teacher/courses/${detail.courseId}` : '/teacher/courses'}>
-            <Button size="small" type="link">
-              课程工作台
-            </Button>
-          </Link>
-        </Space>
-      }
-    >
+    <Card>
+      <CourseBreadcrumb
+        courseId={detail?.courseId}
+        courseName={detail?.courseName}
+        current={detail ? `${detail.title} · 题目管理` : '题目管理'}
+      />
       {detail && (
         <>
           <Space size="middle" style={{ marginBottom: 8 }}>

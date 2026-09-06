@@ -17,7 +17,7 @@ import {
 import type { TableProps } from 'antd';
 import { ArrowLeftOutlined, PlusOutlined } from '@ant-design/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { client, extractApiMessage } from '../../api/client';
 import type { ApiResponse, ProblemDetailView, TestCaseView } from '../../api/types';
 import MarkdownView from '../../components/MarkdownView';
@@ -42,8 +42,22 @@ function toSummary(text: string, max = 40): string {
 export default function ProblemDetailPage() {
   const { problemId } = useParams<{ problemId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { message } = AntApp.useApp();
   const queryClient = useQueryClient();
+
+  // 来路感知：从「作业详情-题目」进入时返回作业详情；默认（题库进入/深链刷新）返回题库。
+  const fromAssignment = (
+    location.state as { fromAssignment?: { assignmentId?: number } } | null
+  )?.fromAssignment;
+  const backLabel = fromAssignment?.assignmentId ? '返回作业' : '返回题库';
+  const goBack = () => {
+    if (fromAssignment?.assignmentId) {
+      navigate(`/teacher/assignments/${fromAssignment.assignmentId}`);
+    } else {
+      navigate('/teacher/problems');
+    }
+  };
 
   const [caseModalOpen, setCaseModalOpen] = useState(false);
   const [editingCase, setEditingCase] = useState<TestCaseView | null>(null); // null=新增，非空=编辑该测试点
@@ -166,8 +180,8 @@ export default function ProblemDetailPage() {
     <Card
       title={
         <Space>
-          <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/teacher/problems')}>
-            返回
+          <Button icon={<ArrowLeftOutlined />} onClick={goBack}>
+            {backLabel}
           </Button>
           <span>{detail?.title ?? '题目详情'}</span>
           {detail && (detail.isPublic ? <Tag color="success">公开</Tag> : <Tag>私有</Tag>)}

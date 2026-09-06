@@ -26,6 +26,8 @@ import type {
   AssignmentTeacherItem,
   Page,
 } from '../../api/types';
+import { useTeacherCourse } from './context';
+import CourseBreadcrumb from './CourseBreadcrumb';
 
 /** 后端 AssignmentStatus 实时推算状态的中文展示。 */
 const STATUS_META: Record<string, { label: string; color?: string }> = {
@@ -54,6 +56,7 @@ export default function AssignmentsPage() {
   const navigate = useNavigate();
   const { message } = AntApp.useApp();
   const queryClient = useQueryClient();
+  const course = useTeacherCourse(courseId);
 
   const [page, setPage] = useState(1);
   const [size, setSize] = useState(20);
@@ -63,6 +66,11 @@ export default function AssignmentsPage() {
   const [saving, setSaving] = useState(false);
   const [togglingId, setTogglingId] = useState<number | null>(null); // 发布开关请求中的行
   const [form] = Form.useForm<AssignmentForm>();
+
+  // 课程切换时重置页码与尺寸，避免小课程出现「空表 + 页码超出」。
+  useEffect(() => {
+    setPage(1);
+  }, [courseId]);
 
   const assignmentsQuery = useQuery({
     queryKey: ['assignments', courseId, page, size],
@@ -245,13 +253,14 @@ export default function AssignmentsPage() {
 
   return (
     <Card
-      title="作业管理"
+      title={course?.name ? `${course.name} · 作业管理` : '作业管理'}
       extra={
         <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
           新建作业
         </Button>
       }
     >
+      <CourseBreadcrumb courseId={Number(courseId)} courseName={course?.name} current="作业管理" />
       <Table<AssignmentTeacherItem>
         rowKey="id"
         columns={columns}
