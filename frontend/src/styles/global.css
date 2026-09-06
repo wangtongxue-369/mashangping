@@ -171,3 +171,11 @@ body {
   font-size: 13px;
   color: var(--msp-text-secondary);
 }
+
+/* 表格自动成卡：位于 msp-shell-content 内的 antd Table 统一白卡面板（教师/学生列表页通用） */
+.msp-shell-content .ant-table-wrapper {
+  background: #fff;
+  border: 1px solid var(--msp-card-border);
+  border-radius: 12px;
+  padding: 4px 8px;
+}

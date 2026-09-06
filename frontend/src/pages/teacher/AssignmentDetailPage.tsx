@@ -251,6 +251,11 @@ export default function AssignmentDetailPage() {
               返回作业列表
             </Button>
           </Link>
+          <Link to={detail ? `/teacher/courses/${detail.courseId}` : '/teacher/courses'}>
+            <Button size="small" type="link">
+              课程工作台
+            </Button>
+          </Link>
         </Space>
       }
     >
