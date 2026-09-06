@@ -14,7 +14,7 @@ import {
 import type { TableProps } from 'antd';
 import { ArrowLeftOutlined, PlusOutlined } from '@ant-design/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { client, extractApiMessage } from '../../api/client';
 import type {
   ApiResponse,
@@ -36,6 +36,7 @@ const STATUS_META: Record<string, { label: string; color?: string }> = {
 export default function AssignmentDetailPage() {
   const { assignmentId } = useParams<{ assignmentId: string }>();
   const { message } = AntApp.useApp();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   const [addOpen, setAddOpen] = useState(false);
@@ -201,13 +202,22 @@ export default function AssignmentDetailPage() {
     {
       title: '操作',
       key: 'action',
-      width: 100,
+      width: 170,
       render: (_, item) => (
-        <Popconfirm title="确定将该题移出作业吗？" onConfirm={() => onRemoveProblem(item)}>
-          <Button size="small" type="text" danger loading={removingId === item.problemId}>
-            移除
+        <Space>
+          <Button
+            size="small"
+            type="link"
+            onClick={() => navigate(`/teacher/assignments/${assignmentId}/plagiarism/${item.problemId}`)}
+          >
+            查重
           </Button>
-        </Popconfirm>
+          <Popconfirm title="确定将该题移出作业吗？" onConfirm={() => onRemoveProblem(item)}>
+            <Button size="small" type="text" danger loading={removingId === item.problemId}>
+              移除
+            </Button>
+          </Popconfirm>
+        </Space>
       ),
     },
   ];

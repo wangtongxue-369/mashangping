@@ -12,6 +12,7 @@ const SubmissionsPage = lazy(() => import('./pages/teacher/SubmissionsPage'));
 const GradebookPage = lazy(() => import('./pages/teacher/GradebookPage'));
 const ProblemsPage = lazy(() => import('./pages/teacher/ProblemsPage'));
 const ProblemDetailPage = lazy(() => import('./pages/teacher/ProblemDetailPage'));
+const PlagiarismPage = lazy(() => import('./pages/teacher/PlagiarismPage'));
 // 学生端路由骨架（lazy 页面本任务提供最小可编译占位，供后续任务填充）。
 const StudentLayout = lazy(() => import('./layout/StudentLayout'));
 const MyCoursesPage = lazy(() => import('./pages/student/MyCoursesPage'));
@@ -38,6 +39,7 @@ const router = createBrowserRouter([
       { path: 'assignments/:assignmentId', element: <AssignmentDetailPage /> },
       { path: 'assignments/:assignmentId/submissions', element: <SubmissionsPage /> },
       { path: 'assignments/:assignmentId/gradebook', element: <GradebookPage /> },
+      { path: 'assignments/:assignmentId/plagiarism/:problemId', element: <PlagiarismPage /> },
       { path: 'problems', element: <ProblemsPage /> },
       { path: 'problems/:problemId', element: <ProblemDetailPage /> },
     ],
