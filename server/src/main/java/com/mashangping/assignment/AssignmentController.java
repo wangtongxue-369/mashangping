@@ -2,6 +2,7 @@ package com.mashangping.assignment;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.mashangping.assignment.dto.AssignmentScoreRequest;
+import com.mashangping.assignment.dto.AssignmentProblemsOrderRequest;
 import com.mashangping.assignment.dto.AssignmentProblemsRequest;
 import com.mashangping.assignment.dto.AssignmentUpsertRequest;
 import com.mashangping.common.ApiResponse;
@@ -103,6 +104,16 @@ public class AssignmentController {
                                            @PathVariable long id,
                                            @PathVariable long problemId) {
         assignmentService.removeProblem(me.uid(), id, problemId);
+        return ApiResponse.ok();
+    }
+
+    /** 题序重排：按目标顺序提交本作业全部 problemId（上移/下移由前端生成） */
+    @PutMapping("/assignments/{id}/problems/order")
+    @PreAuthorize("hasRole('TEACHER')")
+    public ApiResponse<Void> reorderProblems(@AuthenticationPrincipal TokenPayload me,
+                                             @PathVariable long id,
+                                             @Valid @RequestBody AssignmentProblemsOrderRequest request) {
+        assignmentService.reorder(me.uid(), id, request.problemIds());
         return ApiResponse.ok();
     }
 

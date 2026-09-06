@@ -1,6 +1,7 @@
 package com.mashangping.assignment;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.mashangping.assignment.dto.AssignmentProblemsRequest;
 import com.mashangping.assignment.dto.AssignmentScoreRequest;
@@ -195,6 +196,26 @@ public class AssignmentService {
         getOwned(teacherUid, assignmentId);
         AssignmentProblem ap = requireInAssignment(assignmentId, problemId);
         assignmentProblemMapper.deleteById(ap.getId());
+    }
+
+    /** 题序重排（上移/下移）：目标顺序须恰好覆盖本作业全部题目且不重复，随后按序覆写 sort_order。 */
+    @Transactional
+    public void reorder(long teacherUid, long assignmentId, List<Long> problemIds) {
+        getOwned(teacherUid, assignmentId);
+        Set<Long> owned = assignmentProblemMapper.selectList(new LambdaQueryWrapper<AssignmentProblem>()
+                        .eq(AssignmentProblem::getAssignmentId, assignmentId))
+                .stream().map(AssignmentProblem::getProblemId).collect(Collectors.toSet());
+        if (problemIds == null || problemIds.size() != owned.size()
+                || !new HashSet<>(problemIds).equals(owned)) {
+            throw new BizException(ErrorCode.PARAM_INVALID,
+                    "题目顺序须包含本作业全部题目且不重复");
+        }
+        for (int i = 0; i < problemIds.size(); i++) {
+            assignmentProblemMapper.update(null, new LambdaUpdateWrapper<AssignmentProblem>()
+                    .eq(AssignmentProblem::getAssignmentId, assignmentId)
+                    .eq(AssignmentProblem::getProblemId, problemIds.get(i))
+                    .set(AssignmentProblem::getSortOrder, i));
+        }
     }
 
     private AssignmentProblem requireInAssignment(long assignmentId, long problemId) {
