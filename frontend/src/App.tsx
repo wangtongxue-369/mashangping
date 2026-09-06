@@ -3,6 +3,7 @@ import { createBrowserRouter, Navigate } from 'react-router-dom';
 import ProtectedRoute from './layout/ProtectedRoute';
 
 const LoginPage = lazy(() => import('./pages/LoginPage'));
+const RegisterPage = lazy(() => import('./pages/RegisterPage'));
 const TeacherLayout = lazy(() => import('./layout/TeacherLayout'));
 const CoursesPage = lazy(() => import('./pages/teacher/CoursesPage'));
 const CourseStudentsPage = lazy(() => import('./pages/teacher/CourseStudentsPage'));
@@ -25,6 +26,7 @@ const PracticeCodingPage = lazy(() => import('./pages/student/PracticeCodingPage
 
 const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
+  { path: '/register', element: <RegisterPage /> },
   {
     path: '/teacher',
     element: (

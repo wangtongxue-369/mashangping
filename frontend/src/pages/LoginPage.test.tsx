@@ -24,7 +24,7 @@ function ok(data: unknown) {
   return Promise.resolve({ data: { code: 0, message: 'ok', data } });
 }
 
-/** 渲染登录页 + 两个分流目标页；login 依 role 写用户快照。 */
+/** 渲染登录页 + 分流目标页 + 注册页；login 依 role 写用户快照。 */
 function renderLogin(user: { username: string; realName: string; role: string }) {
   mocks.post.mockResolvedValue(ok({ token: 'test-token', user }));
   return render(
@@ -39,6 +39,7 @@ function renderLogin(user: { username: string; realName: string; role: string })
               <Route path="/login" element={<LoginPage />} />
               <Route path="/student/courses" element={<div>学生课程页</div>} />
               <Route path="/teacher/courses" element={<div>教师课程页</div>} />
+              <Route path="/register" element={<div>注册页</div>} />
             </Routes>
           </MemoryRouter>
         </AuthProvider>
@@ -60,6 +61,7 @@ describe('LoginPage', () => {
   beforeEach(() => {
     localStorage.clear();
     vi.clearAllMocks();
+    window.history.pushState({}, '', '/login');
   });
 
   it('学生账号登录成功后跳转 /student/courses', async () => {
@@ -72,5 +74,20 @@ describe('LoginPage', () => {
     renderLogin({ username: 'tea', realName: '教师', role: 'TEACHER' });
     submitLogin();
     expect(await screen.findByText('教师课程页')).toBeTruthy();
+  });
+
+  it('ADMIN 登录提示建设中并清除会话不跳转', async () => {
+    renderLogin({ username: 'admin', realName: '管理员', role: 'ADMIN' });
+    submitLogin();
+    expect(await screen.findByText(/管理员功能建设中/)).toBeTruthy();
+    // 死胡同提示后应原地清会话，不进入教师空端
+    expect(localStorage.getItem('msp_token')).toBeNull();
+    expect(screen.queryByText('教师课程页')).toBeNull();
+  });
+
+  it('无账号时提供注册入口并可进入注册页', async () => {
+    renderLogin({ username: 'stu', realName: '学生', role: 'STUDENT' });
+    fireEvent.click(screen.getByRole('button', { name: /注册学生账号/ }));
+    expect(await screen.findByText('注册页')).toBeTruthy();
   });
 });
