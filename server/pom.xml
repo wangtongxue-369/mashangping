@@ -102,6 +102,33 @@
             <version>3.4.2</version>
         </dependency>
 
+        <!-- 代码查重：Tree-sitter（bonede 绑定自带原生库自动解包），C/C++/Java/Python 语法 -->
+        <dependency>
+            <groupId>io.github.bonede</groupId>
+            <artifactId>tree-sitter</artifactId>
+            <version>0.24.4</version>
+        </dependency>
+        <dependency>
+            <groupId>io.github.bonede</groupId>
+            <artifactId>tree-sitter-c</artifactId>
+            <version>0.23.2</version>
+        </dependency>
+        <dependency>
+            <groupId>io.github.bonede</groupId>
+            <artifactId>tree-sitter-cpp</artifactId>
+            <version>0.23.4</version>
+        </dependency>
+        <dependency>
+            <groupId>io.github.bonede</groupId>
+            <artifactId>tree-sitter-java</artifactId>
+            <version>0.23.4</version>
+        </dependency>
+        <dependency>
+            <groupId>io.github.bonede</groupId>
+            <artifactId>tree-sitter-python</artifactId>
+            <version>0.23.4</version>
+        </dependency>
+
         <!-- test -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -150,6 +177,15 @@
                             <artifactId>lombok</artifactId>
                         </exclude>
                     </excludes>
+                </configuration>
+            </plugin>
+            <!-- 代码查重 Tree-sitter 原生库落盘目录：测试 JVM 内落到 server/target/tree-sitter-lib
+                 （避免默认 ~/.tree-sitter 受目录策略影响；生产运行用 -Dtree-sitter-lib=指定目录） -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <argLine>-Dtree-sitter-lib=${project.build.directory}/tree-sitter-lib</argLine>
                 </configuration>
             </plugin>
         </plugins>
