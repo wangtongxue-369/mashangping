@@ -3,3 +3,4 @@ dist/
 *.local
 *.log
 *.tsbuildinfo
+.npm-cache/

@@ -8,3 +8,6 @@ logs/
 .superpowers/
 .claude/worktrees/
 .claude/settings.local.json
+
+.tools/
+frontend/.npmrc
