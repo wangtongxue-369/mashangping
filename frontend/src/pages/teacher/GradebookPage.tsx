@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { App as AntApp, Button, Card, Space, Table, Typography } from 'antd';
+import { App as AntApp, Button, Card, Checkbox, Space, Table, Typography } from 'antd';
 import type { TableColumnsType, TableProps } from 'antd';
 import { DownloadOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
@@ -37,6 +37,23 @@ async function messageFromJsonBlob(blob: Blob, fallback: string): Promise<string
   return fallback;
 }
 
+/** 从 Content-Disposition 解析文件名（优先 filename*=UTF-8'' 编码，其次 filename="…"），失败回退。 */
+function csvFilenameFromHeader(disposition: unknown, fallbackId: string): string {
+  if (typeof disposition === 'string') {
+    const star = disposition.match(/filename\*=UTF-8''([^;]+)/i)?.[1];
+    if (star) {
+      try {
+        return decodeURIComponent(star);
+      } catch {
+        // 编码损坏走下方普通文件名
+      }
+    }
+    const plain = disposition.match(/filename="?([^";]+)"?/i)?.[1];
+    if (plain) return plain;
+  }
+  return `gradebook-${fallbackId}.csv`;
+}
+
 /** axios 错误体若是后端 JSON Blob 则取业务 message，否则走 axios/兜底文案，不静默。 */
 async function apiMessageFromBlob(err: unknown, fallback: string): Promise<string> {
   const data = (err as { response?: { data?: unknown } })?.response?.data;
@@ -61,6 +78,14 @@ export default function GradebookPage() {
     enabled: !!assignmentId,
   });
   const view = gradebookQuery.data;
+  const [unsubmittedOnly, setUnsubmittedOnly] = useState(false);
+
+  // 「只看未提交」= 该生在本作业任何题目都没有 cell 记录（从未提交过）。
+  const submittedStudentIds = new Set((view?.cells ?? []).map((c) => c.studentId));
+  const displayStudents = (view?.students ?? []).filter(
+    (s) => !(unsubmittedOnly && !submittedStudentIds.has(s.studentId)),
+  );
+  const unsubmittedCount = (view?.students ?? []).filter((s) => !submittedStudentIds.has(s.studentId)).length;
 
   useEffect(() => {
     if (gradebookQuery.isError) {
@@ -86,7 +111,8 @@ export default function GradebookPage() {
       const url = URL.createObjectURL(body as Blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `gradebook-${assignmentId}.csv`;
+      // 后端 Content-Disposition 下发作业名文件名（RFC5987），解析失败回退 gradebook-<id>.csv。
+      a.download = csvFilenameFromHeader(resp.headers?.['content-disposition'], assignmentId);
       a.click();
       URL.revokeObjectURL(url);
       message.success('成绩册 CSV 已导出');
@@ -108,8 +134,8 @@ export default function GradebookPage() {
   }));
 
   const columns: TableProps<GradebookStudent>['columns'] = [
-    { title: '学号', dataIndex: 'studentNo', key: 'studentNo', width: 130 },
-    { title: '姓名', dataIndex: 'realName', key: 'realName', width: 110 },
+    { title: '学号', dataIndex: 'studentNo', key: 'studentNo', width: 130, fixed: 'left' },
+    { title: '姓名', dataIndex: 'realName', key: 'realName', width: 110, fixed: 'left' },
     ...problemColumns,
     {
       title: '总分',
@@ -142,10 +168,20 @@ export default function GradebookPage() {
         </Button>
       }
     >
+      <Space style={{ marginBottom: 12 }}>
+        <Checkbox
+          checked={unsubmittedOnly}
+          disabled={unsubmittedCount === 0}
+          onChange={(e) => setUnsubmittedOnly(e.target.checked)}
+        >
+          只看未提交{unsubmittedCount > 0 ? `（${unsubmittedCount} 人）` : ''}
+        </Checkbox>
+        {view ? <Typography.Text type="secondary">共 {view.students.length} 名学生</Typography.Text> : null}
+      </Space>
       <Table<GradebookStudent>
         rowKey="studentId"
         columns={columns}
-        dataSource={view?.students ?? []}
+        dataSource={displayStudents}
         loading={gradebookQuery.isPending}
         pagination={false}
         scroll={{ x: 'max-content' }}

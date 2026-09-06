@@ -12,11 +12,12 @@ import {
   Space,
   Table,
   Tag,
+  Tooltip,
   Upload,
 } from 'antd';
 import type { TableProps } from 'antd';
 import type { UploadProps } from 'antd';
-import { PlusOutlined, UploadOutlined } from '@ant-design/icons';
+import { DownloadOutlined, PlusOutlined, UploadOutlined } from '@ant-design/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
 import { client, extractApiMessage } from '../../api/client';
@@ -40,6 +41,17 @@ const STATUS_OPTIONS = [
   { value: 'ACTIVE', label: '已激活' },
   { value: 'PENDING', label: '待激活' },
 ];
+
+/** 下载导入模板：表头与后端 ExcelImportService 要求的「学号,姓名」精确一致（UTF-8 BOM，Excel 直开不乱码）。 */
+function downloadStudentTemplate() {
+  const csv = '\uFEFF学号,姓名\n20260001,张三\n';
+  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = '学生导入模板.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 /** 课程学生名单页：分页列表 + 筛选 + 单人添加 + Excel 批量导入 + 移除。 */
 export default function CourseStudentsPage() {
@@ -134,7 +146,14 @@ export default function CourseStudentsPage() {
       key: 'status',
       render: (s: string) => {
         const meta = STATUS_META[s];
-        return meta ? <Tag color={meta.color}>{meta.label}</Tag> : <Tag>{s}</Tag>;
+        const tag = meta ? <Tag color={meta.color}>{meta.label}</Tag> : <Tag>{s}</Tag>;
+        return s === 'PENDING' ? (
+          <Tooltip title="该学号学生尚未注册；学生用此学号自助注册后会自动激活并加入课程">
+            {tag}
+          </Tooltip>
+        ) : (
+          tag
+        );
       },
     },
     {
@@ -155,6 +174,11 @@ export default function CourseStudentsPage() {
       title={course?.name ? `${course.name} · 学生名单` : '课程学生名单'}
       extra={
         <Space>
+          <Tooltip title="Excel 首行表头须为：学号,姓名（仅两列）；支持 .xlsx">
+            <Button icon={<DownloadOutlined />} onClick={downloadStudentTemplate}>
+              下载模板
+            </Button>
+          </Tooltip>
           <Upload {...importProps}>
             <Button icon={<UploadOutlined />}>导入 Excel</Button>
           </Upload>
