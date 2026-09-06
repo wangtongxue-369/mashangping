@@ -175,20 +175,8 @@ export default function SubmissionsPage() {
     },
   ];
 
-  const maskedColumns: TableProps<MaskedPoint>['columns'] = [
-    { title: '点位', dataIndex: 'pointIndex', key: 'pointIndex', render: (v: number) => `#${v}` },
-    {
-      title: '状态',
-      dataIndex: 'status',
-      key: 'status',
-      render: (s: string) => <StatusTag status={s} />,
-    },
-    { title: '用时', dataIndex: 'timeUsedMs', key: 'timeUsedMs', render: (v: number | null) => (v == null ? '—' : `${v} ms`) },
-    { title: '内存', dataIndex: 'memoryUsedMb', key: 'memoryUsedMb', render: (v: number | null) => (v == null ? '—' : `${v} MB`) },
-  ];
-
-  function renderSamplePoint(p: SamplePoint) {
-    const ac = p.status === 'AC';
+  function renderPointBox(p: MaskedPoint, label: string, acBg?: boolean) {
+    const ac = acBg && p.status === 'AC';
     return (
       <div
         key={p.pointIndex}
@@ -201,7 +189,9 @@ export default function SubmissionsPage() {
         }}
       >
         <Space size={8}>
-          <Typography.Text strong>样例点 #{p.pointIndex}</Typography.Text>
+          <Typography.Text strong>
+            {label} #{p.pointIndex}
+          </Typography.Text>
           <StatusTag status={p.status} />
           {p.timeUsedMs != null && <span>{p.timeUsedMs} ms</span>}
           {p.memoryUsedMb != null && <span>{p.memoryUsedMb} MB</span>}
@@ -210,22 +200,28 @@ export default function SubmissionsPage() {
           <Typography.Text type="secondary">输入</Typography.Text>
           <pre style={{ margin: '4px 0', whiteSpace: 'pre-wrap' }}>{p.input ?? '（不可用）'}</pre>
           <Typography.Text type="secondary">期望输出</Typography.Text>
-          <pre style={{ margin: '4px 0', whiteSpace: 'pre-wrap' }}>
-            {p.expectedOutput ?? '（不可用）'}
-          </pre>
-          {/* message 仅失败点有值（如 RE 的 stderr 文案），AC 点为 null 不渲染 */}
-          {p.message && (
+          <pre style={{ margin: '4px 0', whiteSpace: 'pre-wrap' }}>{p.expectedOutput ?? '（不可用）'}</pre>
+          {p.actualOutput != null ? (
             <>
-              <Typography.Text type="secondary">错误信息</Typography.Text>
+              <Typography.Text type="secondary">实际输出</Typography.Text>
               <pre style={{ margin: '4px 0', whiteSpace: 'pre-wrap', color: '#cf1322' }}>
-                {p.message}
+                {p.actualOutput}
               </pre>
             </>
-          )}
+          ) : null}
+          {p.message ? (
+            <>
+              <Typography.Text type="secondary">错误信息</Typography.Text>
+              <pre style={{ margin: '4px 0', whiteSpace: 'pre-wrap', color: '#cf1322' }}>{p.message}</pre>
+            </>
+          ) : null}
         </div>
       </div>
     );
   }
+
+  const renderSamplePoint = (p: SamplePoint) => renderPointBox(p, '样例点', true);
+  const renderMaskedPoint = (p: MaskedPoint) => renderPointBox(p, '隐藏点');
 
   return (
     <Card
@@ -327,15 +323,9 @@ export default function SubmissionsPage() {
             {detail.maskedPoints.length > 0 && (
               <>
                 <Typography.Title level={5} style={{ margin: '16px 0 8px' }}>
-                  隐藏点（共 {detail.maskedPoints.length} 个，仅状态与耗时）
+                  隐藏点（共 {detail.maskedPoints.length} 个，教师属主可查看完整输入输出诊断）
                 </Typography.Title>
-                <Table<MaskedPoint>
-                  rowKey="pointIndex"
-                  size="small"
-                  pagination={false}
-                  columns={maskedColumns}
-                  dataSource={detail.maskedPoints}
-                />
+                {detail.maskedPoints.map((p) => renderMaskedPoint(p))}
               </>
             )}
           </>

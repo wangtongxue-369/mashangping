@@ -64,7 +64,7 @@ export interface TeacherSubmissionRow {
   isLate: boolean;
 }
 
-/** 判题样例点（TeacherSubmissionRow.SamplePoint）：七字段全量；message 仅为失败信息（如 RE stderr）。 */
+/** 判题样例点（TeacherSubmissionRow.SamplePoint）：属主全量 + 实际输出（WA 诊断用）。 */
 export interface SamplePoint {
   pointIndex: number;
   status: string;
@@ -73,17 +73,22 @@ export interface SamplePoint {
   input: string | null;
   expectedOutput: string | null;
   message: string | null;
+  actualOutput?: string | null;
 }
 
-/** 隐藏点瘦身视图（TeacherSubmissionRow.MaskedPoint）：输入/期望输出/信息零泄漏。 */
+/** 隐藏点（教师属主完整视图）：输入/期望输出/错误信息/实际输出都可诊断 WA；零泄漏仅约束学生端。 */
 export interface MaskedPoint {
   pointIndex: number;
   status: string;
   timeUsedMs: number | null;
   memoryUsedMb: number | null;
+  input: string | null;
+  expectedOutput: string | null;
+  message: string | null;
+  actualOutput?: string | null;
 }
 
-/** 教师提交详情（TeacherSubmissionRow.Detail）：代码全文 + 样例点全量 + 隐藏点瘦身。 */
+/** 教师提交详情（TeacherSubmissionRow.Detail）：代码全文 + 样例点与隐藏点完整诊断（属主视图）。 */
 export interface TeacherSubmissionDetail {
   submissionId: number;
   code: string;
