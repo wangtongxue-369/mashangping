@@ -68,15 +68,17 @@ function codePane(code: string, shared: Set<number>, title: string) {
 export default function PlagiarismPage() {
   const { assignmentId, problemId } = useParams<{ assignmentId: string; problemId: string }>();
   const navigate = useNavigate();
-  const [high, setHigh] = useState(0.8);
+  // 阈值「草稿」与「已应用」分离：调 InputNumber 只改本地，点「应用阈值」才触发重查。
+  const [thresholdDraft, setThresholdDraft] = useState(0.8);
+  const [threshold, setThreshold] = useState(0.8);
   const [compare, setCompare] = useState<PlagiarismPair | null>(null);
 
   const reportQuery = useQuery<PlagiarismReport>({
-    queryKey: ['plagiarism', assignmentId, problemId, high],
+    queryKey: ['plagiarism', assignmentId, problemId, threshold],
     queryFn: () =>
       client
         .get<{ data: PlagiarismReport }>(`/assignments/${assignmentId}/plagiarism/problems/${problemId}`, {
-          params: { includeMin: 0.5, high },
+          params: { includeMin: 0.5, high: threshold },
         })
         .then((r) => r.data.data),
     enabled: Boolean(assignmentId && problemId),
@@ -160,14 +162,22 @@ export default function PlagiarismPage() {
           min={0}
           max={1}
           step={0.05}
-          value={high}
-          onChange={(v) => setHigh(v ?? 0.8)}
+          value={thresholdDraft}
+          onChange={(v) => setThresholdDraft(v ?? 0.8)}
           style={{ width: 110 }}
         />
-        <Button type="primary" onClick={() => reportQuery.refetch()} loading={reportQuery.isFetching}>
-          重新查重
+        <Button
+          type="primary"
+          disabled={thresholdDraft === threshold}
+          onClick={() => setThreshold(thresholdDraft)}
+          loading={reportQuery.isFetching && thresholdDraft === threshold}
+        >
+          应用阈值
         </Button>
       </Space>
+      <div style={{ color: '#9aa0a6', fontSize: 12, marginTop: -6, marginBottom: 12 }}>
+        调整阈值后点击「应用阈值」重新查重；仅标记相似度 ≥ {threshold.toFixed(2)} 的对为「高疑似」。
+      </div>
       {reportQuery.isError ? (
         <div style={{ color: '#c00', margin: 12 }}>{extractApiMessage(reportQuery.error, '报告加载失败')}</div>
       ) : null}
